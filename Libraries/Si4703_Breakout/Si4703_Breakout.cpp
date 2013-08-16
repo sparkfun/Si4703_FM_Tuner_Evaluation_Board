@@ -19,10 +19,6 @@ boolean Si4703_Breakout::powerOn()
 	
 }
 
-//reste à faire :
-//param par defaut init
-// AF
-// ct
 
 
 void Si4703_Breakout::setChannel(int channel)
