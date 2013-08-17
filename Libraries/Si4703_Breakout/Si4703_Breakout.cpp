@@ -193,7 +193,7 @@ void Si4703_Breakout::readRT(char* buffer){
 		buffer[13] ='\0';
 		return;
 	}
-	if (groupe==0 ) {
+	if (groupe==1 ) {
 		buffer[64] = '\0';
 	}else{
 		buffer[32] = '\0';	
