@@ -135,6 +135,7 @@ void Si4703_Breakout::readRT(char* buffer){
 	unsigned long  endTime = millis() + timeout;
 	boolean completed[] = {false, false, false, false,false, false, false, false,false, false, false, false,false, false, false, false};
 	int completedCount = 0;
+	int group;
 	while(completedCount < 16 && millis() < endTime) {
 		readRegisters();
 		if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
@@ -157,13 +158,15 @@ void Si4703_Breakout::readRT(char* buffer){
 					buffer[index * 4 +1] = Cl;
 					buffer[index * 4 +2] = Dh;
 					buffer[index * 4 +3] = Dl;
+					groupe=1;
 				}else{
 					completed[index] = true;
 					completedCount ++;
 					char Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
 					char Dl = (si4703_registers[RDSD] & 0x00FF);
 					buffer[index * 2]    = Dh;
-					buffer[index * 2 +1] = Dl;					
+					buffer[index * 2 +1] = Dl;
+					groupe=0;
 			    }
 			}
 			delay(40); //Wait for the RDS bit to clear
@@ -190,8 +193,11 @@ void Si4703_Breakout::readRT(char* buffer){
 		buffer[13] ='\0';
 		return;
 	}
-	
-	buffer[64] = '\0';
+	if (groupe==0 ) {
+		buffer[64] = '\0';
+	}else{
+		buffer[32] = '\0';	
+	}
 }
 
 
