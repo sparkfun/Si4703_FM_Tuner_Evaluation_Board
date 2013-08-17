@@ -132,7 +132,6 @@ void Si4703_Breakout::readPS(char* buffer){
 
 void Si4703_Breakout::readRT(char* buffer){ 
 	int timeout=20000;
-	int select;
 	unsigned long  endTime = millis() + timeout;
 	boolean completed[] = {false, false, false, false,false, false, false, false,false, false, false, false,false, false, false, false};
 	int completedCount = 0;
@@ -173,36 +172,22 @@ void Si4703_Breakout::readRT(char* buffer){
 			delay(30); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
 		}
 	}
-	if (millis() >= endTime || select == LOW) {
-		buffer[0] =' ';
-		buffer[1] =' ';
+	if (millis() >= endTime ) {
+
+		buffer[0] ='N';
+		buffer[1] ='o';
 		buffer[2] =' ';
-		buffer[3] =' ';
-		buffer[4] =' ';
-		buffer[5] =' ';
-		buffer[6] =' ';
-		buffer[7] =' ';
-		buffer[8] ='N';
-		buffer[9] ='o';
-		buffer[10] =' ';
-		buffer[11] ='R';
-		buffer[12] ='a';
-		buffer[13] ='d';
-		buffer[14] ='i';
-		buffer[15] ='o';
-		buffer[16] =' ';
-		buffer[17] ='T';
-		buffer[18] ='e';
-		buffer[19] ='x';
-		buffer[20] ='t';
-		buffer[21] =' ';
-		buffer[22] =' ';
-		buffer[23] =' ';
-		buffer[24] =' ';
-		buffer[25] =' ';
-		buffer[26] =' ';
-		buffer[27] =' ';
-		buffer[64] ='\0';
+		buffer[3] ='R';
+		buffer[4] ='a';
+		buffer[5] ='d';
+		buffer[6] ='i';
+		buffer[7] ='o';
+		buffer[8] =' ';
+		buffer[9] ='T';
+		buffer[10] ='e';
+		buffer[11] ='x';
+		buffer[12] ='t';
+		buffer[13] ='\0';
 		return;
 	}
 	
@@ -294,7 +279,6 @@ void Si4703_Breakout::readAF(int* buffer){
 	long Ch;
 	long Cl;
 	int ok;
-	int select;
 	while(millis() < endTime) {
 		readRegisters();
 		if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
@@ -348,7 +332,7 @@ void Si4703_Breakout::readAF(int* buffer){
 			delay(30); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
 		}
 	}
-	if (millis() >= endTime || select == LOW){
+	if (millis() >= endTime ){
 		return ;
 	}
 }
@@ -404,7 +388,6 @@ void Si4703_Breakout::readCT(int* buffer){
 	int month;
 	int day;
 	int date;
-	int select;
 	while(millis() < endTime) {
 		readRegisters();
 		if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
@@ -451,7 +434,7 @@ void Si4703_Breakout::readCT(int* buffer){
 			delay(30); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
 		}
 	}
-	if (millis() >= endTime || select == LOW){
+	if (millis() >= endTime ){
 		return ;
 	}
 }
