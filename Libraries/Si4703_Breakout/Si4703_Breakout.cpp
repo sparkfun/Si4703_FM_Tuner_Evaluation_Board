@@ -135,7 +135,7 @@ void Si4703_Breakout::readRT(char* buffer){
 	unsigned long  endTime = millis() + timeout;
 	boolean completed[] = {false, false, false, false,false, false, false, false,false, false, false, false,false, false, false, false};
 	int completedCount = 0;
-	int group;
+	int groupe;
 	while(completedCount < 16 && millis() < endTime) {
 		readRegisters();
 		if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
