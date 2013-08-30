@@ -7,8 +7,18 @@ int resetPin = 4;
 int SDIO = 2;
 int SCLK = 3;
 
-Si4703_Breakout radio(resetPin, SDIO, SCLK);
-int channel=926;
+//comment or uncomment US or Europe version
+
+//Europe version
+//Si4703_Breakout radio(resetPin, SDIO, SCLK,0);
+
+//US version
+Si4703_Breakout radio(resetPin, SDIO, SCLK,1);
+
+//end Europe or US version
+
+
+int channel=927;
 int volume=10;
 
 void setup()
@@ -19,7 +29,6 @@ void setup()
   delay(1000);
   Serial.println("\n\nSi4703_Breakout Test Sketch");
   Serial.println("===========================");
-  Serial.println("a b Favourite stations");
   Serial.println("+ - Volume (max 15)");
   Serial.println("u d Seek up / down");
   Serial.println("r display RDS Data");
@@ -60,18 +69,6 @@ void loop()
       volume --;
       if (volume < 0) volume = 0;
       radio.setVolume(volume);
-      displayInfo();
-    }
-    else if (ch == 'a')
-    {
-      channel = 930; // Rock FM
-      radio.setChannel(channel);
-      displayInfo();
-    }
-    else if (ch == 'b')
-    {
-      channel = 974; // BBC R4
-      radio.setChannel(channel);
       displayInfo();
     }
     else if (ch == 'r')
