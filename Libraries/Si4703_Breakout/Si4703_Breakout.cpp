@@ -2,11 +2,12 @@
 #include "Si4703_Breakout.h"
 #include "Wire.h"
 
-Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, int sclkPin)
+Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, int sclkPin, int region)
 {
   _resetPin = resetPin;
   _sdioPin = sdioPin;
   _sclkPin = sclkPin;
+  _region=region;
 }
 
 boolean Si4703_Breakout::powerOn()
@@ -24,11 +25,18 @@ boolean Si4703_Breakout::powerOn()
 void Si4703_Breakout::setChannel(int channel)
 {
   //Freq(MHz) = 0.200(in USA) * Channel + 87.5MHz
-  //97.3 = 0.2 * Chan + 87.5
-  //9.8 / 0.2 = 49
-  int newChannel = channel * 10; //973 * 10 = 9730
-  newChannel -= 8750; //9730 - 8750 = 980
-  newChannel /= 10; //980 / 10 = 98
+  //channel=(freq-87.5)/0.2;
+  //Freq(MHz) = 0.100(in Europe) * Channel + 87.5MHz
+  //channel=(freq-87.5)/0.1;
+  
+  int newChannel = channel * 10; 
+  newChannel -= 8750; 
+
+  if (_region==1){
+    newChannel /= 20; // US
+  } else {
+    newChannel /= 10; // Europe
+  }
 
   //These steps come from AN230 page 20 rev 0.5
   readRegisters();
@@ -488,8 +496,13 @@ boolean Si4703_Breakout::si4703_init()
   si4703_registers[POWERCFG] |= (1<<MONO);// sortie mono forcee
   si4703_registers[SYSCONFIG1] |= (1<<RDS); //Enable RDS
 
-  si4703_registers[SYSCONFIG1] |= (1<<DE); //50kHz Europe setup
-  si4703_registers[SYSCONFIG2] |= (1<<SPACE0); //100kHz channel spacing for Europe
+  if (_region==1){
+    si4703_registers[SYSCONFIG1] |= (0<<DE); //75us US setup
+    si4703_registers[SYSCONFIG2] |= (0<<SPACE0);//200kHz channel spacing for US
+  } else {
+    si4703_registers[SYSCONFIG1] |= (1<<DE); //50us Europe setup
+    si4703_registers[SYSCONFIG2] |= (1<<SPACE0); //100kHz channel spacing for Europe
+  }
 
   si4703_registers[SYSCONFIG2] &= 0xFFF0; //Clear volume bits
   si4703_registers[SYSCONFIG2] |= 0x0001; //Set volume to lowest
@@ -600,8 +613,12 @@ return getChannel();
 int Si4703_Breakout::getChannel() {
   readRegisters();
   int channel = si4703_registers[READCHAN] & 0x03FF; //Mask out everything but the lower 10 bits
-  //Freq(MHz) = 0.100(in Europe) * Channel + 87.5MHz
-  //X = 0.1 * Chan + 87.5
-  channel += 875; //98 + 875 = 973
+  //X = 0.1 * Chan + 87.5 ->Europe
+  //X = 0.2 * Chan + 87.5 ->US
+  if (_region==1){
+    channel = 2*channel + 875;  // US
+  } else {
+    channel += 875; // Europe
+  }
   return(channel);
 }
