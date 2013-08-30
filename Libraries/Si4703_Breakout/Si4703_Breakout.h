@@ -62,8 +62,8 @@ class Si4703_Breakout
 {
  public:
  
-    Si4703_Breakout(int resetPin, int sdioPin, int sclkPin);
-    boolean powerOn();					
+  Si4703_Breakout(int resetPin, int sdioPin, int sclkPin, int region);  //alex OGER -> region: 0 Europe -  1 US
+  boolean powerOn();					
 	void setChannel(int channel);  	// Alex OGER add timeout 2sec
 	int seekUp(); 					
 	int seekDown(); 				
@@ -86,6 +86,7 @@ class Si4703_Breakout
   int  _resetPin;
 	int  _sdioPin;
 	int  _sclkPin;
+	int  _region;
 	boolean si4703_init();			     //Alex OGER change type void ->boolean
 	boolean readRegisters();		     //Alex OGER change type void ->boolean + timout 2sec. in I2c communication
 	byte updateRegisters();
