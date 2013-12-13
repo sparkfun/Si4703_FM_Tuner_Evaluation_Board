@@ -21,15 +21,12 @@
  1/18 - after much hacking, I suggest NEVER write to a register without first reading the contents of a chip.
  ie, don't updateRegisters without first readRegisters.
  
- If anyone manages to get this datasheet downloaded
- http://wenku.baidu.com/view/d6f0e6ee5ef7ba0d4a733b61.html
- Please let us know. It seem to be the latest version of the programming guide. It had a change on page 12 (write 0x8100 to 0x07)
- that allowed me to get the chip working..
+ This document was crucial: http://wenku.baidu.com/view/d6f0e6ee5ef7ba0d4a733b61.html
+ It had a change on page 12 (write 0x8100 to 0x07) that allowed me to get the chip working..
  
- Also, if you happen to find "AN243: Using RDS/RBDS with the Si4701/03", please share. I love it when companies refer to
- documents that don't exist.
+ Be sure to see "AN243: Using RDS/RBDS with the Si4701/03" for more info about the extra info embedded in a broadcast signal.
  
- 1/20 - Picking up FM stations from a plane flying over Portugal! Sweet! 93.9MHz sounds a little soft for my tastes,s but
+ 1/20/11 - Picking up FM stations from a plane flying over Portugal! Sweet! 93.9MHz sounds a little soft for my tastes,s but
  it's in Porteguese.
  
  ToDo:
