@@ -27,9 +27,9 @@
 <layer number="17" name="Pads" color="2" fill="1" visible="yes" active="yes"/>
 <layer number="18" name="Vias" color="2" fill="1" visible="yes" active="yes"/>
 <layer number="19" name="Unrouted" color="6" fill="1" visible="yes" active="yes"/>
-<layer number="20" name="Dimension" color="6" fill="1" visible="yes" active="yes"/>
+<layer number="20" name="Dimension" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="21" name="tPlace" color="16" fill="1" visible="yes" active="yes"/>
-<layer number="22" name="bPlace" color="14" fill="1" visible="no" active="yes"/>
+<layer number="22" name="bPlace" color="14" fill="1" visible="yes" active="yes"/>
 <layer number="23" name="tOrigins" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="24" name="bOrigins" color="15" fill="1" visible="yes" active="yes"/>
 <layer number="25" name="tNames" color="7" fill="1" visible="no" active="yes"/>
@@ -56,7 +56,7 @@
 <layer number="46" name="Milling" color="3" fill="1" visible="no" active="yes"/>
 <layer number="47" name="Measures" color="7" fill="1" visible="no" active="yes"/>
 <layer number="48" name="Document" color="7" fill="1" visible="no" active="yes"/>
-<layer number="49" name="Reference" color="7" fill="1" visible="no" active="yes"/>
+<layer number="49" name="Reference" color="7" fill="1" visible="yes" active="yes"/>
 <layer number="50" name="dxf" color="7" fill="1" visible="no" active="yes"/>
 <layer number="51" name="tDocu" color="6" fill="1" visible="yes" active="yes"/>
 <layer number="52" name="bDocu" color="7" fill="1" visible="no" active="yes"/>
@@ -79,8 +79,8 @@
 <layer number="105" name="tPlate" color="7" fill="1" visible="no" active="yes"/>
 <layer number="106" name="bPlate" color="7" fill="1" visible="no" active="yes"/>
 <layer number="107" name="Crop" color="7" fill="1" visible="no" active="yes"/>
-<layer number="108" name="tplace-old" color="10" fill="1" visible="yes" active="yes"/>
-<layer number="109" name="ref-old" color="11" fill="1" visible="yes" active="yes"/>
+<layer number="108" name="tplace-old" color="10" fill="1" visible="no" active="yes"/>
+<layer number="109" name="ref-old" color="11" fill="1" visible="no" active="yes"/>
 <layer number="116" name="Patch_BOT" color="9" fill="4" visible="no" active="yes"/>
 <layer number="121" name="_tsilk" color="7" fill="1" visible="no" active="yes"/>
 <layer number="122" name="_bsilk" color="7" fill="1" visible="no" active="yes"/>
@@ -131,8 +131,10 @@
 <text x="6.985" y="2.667" size="1.27" layer="22" font="vector" ratio="15" rot="MR90">!RST</text>
 <text x="4.445" y="2.667" size="1.27" layer="22" font="vector" ratio="15" rot="MR90">GPIO1</text>
 <text x="1.905" y="2.667" size="1.27" layer="22" font="vector" ratio="15" rot="MR90">GPIO2</text>
-<text x="2.159" y="10.668" size="1.27" layer="21" font="vector" ratio="15" rot="R90">Si470x</text>
+<text x="2.54" y="6.477" size="0.8128" layer="21" font="vector" ratio="15" rot="R90">Si4703 FM Tuner
+     Evaluation</text>
 <text x="21.336" y="29.591" size="1.27" layer="16" font="vector" ratio="20" rot="SMR0">v1.3</text>
+<text x="17.78" y="-8.89" size="1.778" layer="51" font="vector" ratio="15">N. Seidle</text>
 </plain>
 <libraries>
 <library name="SparkFun">
@@ -1365,6 +1367,9 @@ We've spent an enormous amount of time creating and checking these footprints an
 <vertex x="0.1794" y="-0.4331"/>
 </polygon>
 </package>
+<package name="REVISION">
+<text x="0" y="0" size="1.778" layer="51">Revision By: </text>
+</package>
 </packages>
 </library>
 <library name="SparkFun-Resistors">
@@ -1873,9 +1878,10 @@ design rules under a new name.</description>
 <element name="JP4" library="SparkFun" package="FIDUCIAL-1X2" value="FIDUCIAL1X2" x="21.59" y="3.81"/>
 <element name="JP5" library="SparkFun" package="FIDUCIAL-1X2" value="FIDUCIAL1X2" x="1.27" y="26.67"/>
 <element name="U4" library="SparkFun-Connectors" package="AUDIO-JACK-3.5MM-SMD" value="" x="6.35" y="31.75" rot="R270"/>
-<element name="FRAME2" library="SparkFun-Aesthetics" package="CREATIVE_COMMONS" value="FRAME-LETTER" x="17.78" y="-17.78"/>
+<element name="FRAME2" library="SparkFun-Aesthetics" package="CREATIVE_COMMONS" value="FRAME-LETTER" x="-12.7" y="-8.89"/>
 <element name="LOGO1" library="SparkFun-Aesthetics" package="SFE_LOGO_NAME_FLAME_.1" value="SFE_LOGO_NAME_FLAME.1_INCH" x="17.272" y="15.494" rot="MR0"/>
 <element name="LOGO2" library="SparkFun-Aesthetics" package="OSHW-LOGO-S" value="OSHW-LOGOS" x="19.431" y="27.051" rot="MR0"/>
+<element name="U$1" library="SparkFun-Aesthetics" package="REVISION" value="REVISION" x="-33.02" y="-12.7"/>
 </elements>
 <signals>
 <signal name="GND">
@@ -1894,7 +1900,6 @@ design rules under a new name.</description>
 <contactref element="U3" pad="5"/>
 <contactref element="C6" pad="1"/>
 <contactref element="R1" pad="2"/>
-<contactref element="JP1" pad="7"/>
 <wire x1="8.37" y1="11.495" x2="8.37" y2="12.9013" width="0.2032" layer="1"/>
 <wire x1="8.37" y1="12.9013" x2="9.238" y2="13.7693" width="0.2032" layer="1"/>
 <via x="19.05" y="21.59" extent="1-16" drill="0.508"/>
@@ -1940,6 +1945,7 @@ design rules under a new name.</description>
 <wire x1="6.87" y1="11.164" x2="7.112" y2="10.922" width="0.2032" layer="1"/>
 <wire x1="6.87" y1="11.495" x2="6.87" y2="11.442" width="0.2032" layer="1"/>
 <wire x1="6.87" y1="11.442" x2="6.858" y2="11.43" width="0.2032" layer="1"/>
+<contactref element="JP1" pad="8"/>
 </signal>
 <signal name="N$1">
 <contactref element="Y1" pad="X2"/>
@@ -2204,13 +2210,9 @@ design rules under a new name.</description>
 <contactref element="C2" pad="1"/>
 <contactref element="C1" pad="1"/>
 <contactref element="C6" pad="2"/>
-<contactref element="JP1" pad="8"/>
 <contactref element="U3" pad="8"/>
 <wire x1="6.355" y1="11.425" x2="6.35" y2="11.43" width="0.2032" layer="1"/>
 <wire x1="11.01" y1="5.08" x2="13.12" y2="5.08" width="0.2032" layer="1"/>
-<wire x1="20.32" y1="5.08" x2="20.32" y2="1.27" width="0.2032" layer="16"/>
-<wire x1="19.05" y1="6.35" x2="20.32" y2="5.08" width="0.2032" layer="16"/>
-<wire x1="10.16" y1="6.35" x2="19.05" y2="6.35" width="0.2032" layer="16"/>
 <wire x1="6.35" y1="6.35" x2="10.16" y2="6.35" width="0.2032" layer="16"/>
 <wire x1="3.048" y1="9.652" x2="6.35" y2="6.35" width="0.2032" layer="16"/>
 <wire x1="3.048" y1="9.652" x2="3.048" y2="13.208" width="0.2032" layer="16"/>
@@ -2224,9 +2226,6 @@ design rules under a new name.</description>
 <via x="15.8572" y="24.1224" extent="1-16" drill="0.508"/>
 <via x="5.08" y="13.97" extent="1-16" drill="0.508"/>
 <via x="10.16" y="6.35" extent="1-16" drill="0.508"/>
-<wire x1="18.63" y1="5.08" x2="19.558" y2="5.08" width="0.2032" layer="1"/>
-<wire x1="19.558" y1="5.08" x2="20.32" y2="4.318" width="0.2032" layer="1"/>
-<wire x1="20.32" y1="4.318" x2="20.32" y2="1.27" width="0.2032" layer="1"/>
 <wire x1="17.0688" y1="24.13" x2="15.8648" y2="24.13" width="0.2032" layer="1"/>
 <wire x1="15.8648" y1="24.13" x2="15.8572" y2="24.1224" width="0.2032" layer="1"/>
 <wire x1="17.145" y1="24.39" x2="17.145" y2="25.4" width="0.2032" layer="1"/>
@@ -2255,6 +2254,14 @@ design rules under a new name.</description>
 <wire x1="11.43" y1="14.605" x2="10.16" y2="14.605" width="0.2032" layer="1"/>
 <wire x1="17.0688" y1="24.13" x2="17.0688" y2="24.3138" width="0.2032" layer="1"/>
 <wire x1="17.0688" y1="24.3138" x2="17.145" y2="24.39" width="0.2032" layer="1"/>
+<contactref element="JP1" pad="7"/>
+<wire x1="10.16" y1="6.35" x2="16.51" y2="6.35" width="0.254" layer="16"/>
+<wire x1="16.51" y1="6.35" x2="17.78" y2="5.08" width="0.254" layer="16"/>
+<wire x1="17.78" y1="5.08" x2="17.78" y2="1.27" width="0.254" layer="16"/>
+<wire x1="18.63" y1="5.08" x2="19.431" y2="5.08" width="0.254" layer="1"/>
+<wire x1="19.431" y1="5.08" x2="19.939" y2="4.572" width="0.254" layer="1"/>
+<wire x1="19.939" y1="4.572" x2="19.939" y2="3.429" width="0.254" layer="1"/>
+<wire x1="19.939" y1="3.429" x2="17.78" y2="1.27" width="0.254" layer="1"/>
 </signal>
 <signal name="N$4">
 <contactref element="C7" pad="C"/>
@@ -2291,4 +2298,10 @@ design rules under a new name.</description>
 </errors>
 </board>
 </drawing>
+<compatibility>
+<note version="6.3" minversion="6.2.2" severity="warning">
+Since Version 6.2.2 text objects can contain more than one line,
+which will not be processed correctly with this version.
+</note>
+</compatibility>
 </eagle>
