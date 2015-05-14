@@ -1,7 +1,6 @@
-SparkFun <PRODUCT NAME> Firmware
+SparkFun Si4703 Firmware
 ===================================
 
-* **Examples** - <LANGUAGE> examples
-    * <EXAMPLE NAME> - <FUNCTION>
+* **Si4703_Example** - Arduino example
 
 
