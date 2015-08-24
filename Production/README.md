@@ -1,5 +1,5 @@
-SparkFun <PRODUCT NAME> Production Files
-=========================================
+SparkFun Si4703 Evaluation Board Production Files
+==================================================
 
 
 These are the production files SparkFun uses for printing PCBs.
