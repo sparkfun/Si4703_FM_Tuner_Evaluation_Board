@@ -279,7 +279,7 @@ void loop() {
           delay(40); //Wait for the RDS bit to clear
         }
         else {
-          delay(30); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
+          delay(40); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
         }
       }
     }
@@ -327,7 +327,7 @@ void loop() {
           delay(40); //Wait for the RDS bit to clear
         }
         else {
-          delay(30); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
+          delay(40); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
         }
       }
     }
