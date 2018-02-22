@@ -7,6 +7,7 @@ Libraries for use in different environments.
 Directory Contents
 -------------------
 * **/Arduino** - [Arduino IDE](http://www.arduino.cc/en/Main/Software) libraries
+* **/RaspberryPi** - [Raspberry Pi](https://www.raspberrypi.org/) libraries
 
 
 License Information
