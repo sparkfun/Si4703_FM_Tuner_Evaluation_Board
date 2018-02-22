@@ -128,8 +128,6 @@ class Si4703_Breakout {
   static const uint16_t RDSS = 11;
   static const uint16_t STEREO = 8;
 
-  int si4703_init();
-  void si4703_exit();
   uint8_t readRegisters();
   uint8_t updateRegisters();
   int seek(uint8_t seekDirection);

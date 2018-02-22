@@ -19,12 +19,73 @@ Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin) {
   sdioPin_ = sdioPin;
 }
 
+// To get the Si4703 inito 2-wire mode, SEN needs to be high and SDIO needs to
+// be low after a reset.
+// The breakout board has SEN pulled high, but also has SDIO pulled high.
+// Therefore, after a normal power up
+// the Si4703 will be in an unknown state. RST must be controlled.
 int Si4703_Breakout::powerOn() {
-  return si4703_init();
+  wiringPiSetupGpio();  // Setup gpio access in BCM mode.
+
+  pinMode(resetPin_, OUTPUT);  // gpio bit-banging to get 2-wire (I2C) mode.
+  pinMode(sdioPin_, OUTPUT);   // SDIO is connected to A4 for I2C.
+
+  digitalWrite(sdioPin_, LOW);    // A low SDIO indicates a 2-wire interface.
+  digitalWrite(resetPin_, LOW);   // Put Si4703 into reset.
+  delay(1);                       // Some delays while we allow pins to settle.
+  digitalWrite(resetPin_, HIGH);  // Bring Si4703 out of reset with SDIO set to
+                                  // low and SEN pulled high with on-board
+                                  // resistor.
+  delay(1);                       // Allow Si4703 to come out of reset.
+
+  // Setup I2C.
+  char filename[20];
+  // Handle both RPi board revisions.
+  snprintf(filename, 19, "/dev/i2c-%d", piBoardRev());
+  if ((si4703_fd_ = open(filename, O_RDWR)) < 0) {  // Open I2C slave device.
+    perror(filename);
+    return (FAIL);
+  }
+
+  if (ioctl(si4703_fd_, I2C_SLAVE, SI4703) < 0) {  // Set device address 0x10.
+    perror("Failed to aquire bus access and/or talk to slave");
+    return (FAIL);
+  }
+
+  if (ioctl(si4703_fd_, I2C_PEC, 1) < 0) {  // Enable "Packet Error Checking".
+    perror("Failed to enable PEC");
+    return (FAIL);
+  }
+
+  readRegisters();  // Read the current register set.
+
+  // Enable the oscillator, from AN230 page 9, rev 0.61 (works).
+  registers_[0x07] = 0x8100;
+  updateRegisters();  // Update.
+
+  delay(500);  // Wait for clock to settle - from AN230 page 9.
+
+  readRegisters();                // Read the current register set.
+  registers_[POWERCFG] = 0x4001;  // Enable the IC.
+
+  registers_[SYSCONFIG1] |= (1 << RDS);  // Enable RDS.
+  registers_[SYSCONFIG1] |= (1 << DE);   // 50kHz Europe setup.
+
+  // 100kHz channel spacing for Europe.
+  registers_[SYSCONFIG2] |= (1 << SPACE0);
+  // registers_[SYSCONFIG2] &= 0xFFF0; // Clear volume bits.
+  // registers_[SYSCONFIG2] |= 0x0001; // Set volume to lowest.
+  updateRegisters();  // Update.
+
+  delay(110);  // Max powerup time, from datasheet page 13.
+
+  return (SUCCESS);
 }
 
 void Si4703_Breakout::powerOff() {
-  return si4703_exit();
+  readRegisters();
+  registers_[POWERCFG] = 0x0000;  // Clear Enable Bit disables chip.
+  updateRegisters();
 }
 
 void Si4703_Breakout::setChannel(int channel) {
@@ -80,7 +141,7 @@ void Si4703_Breakout::setVolume(int volume) {
     volume = 15;
   registers_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
   registers_[SYSCONFIG2] |= volume;  // Set new volume.
-  updateRegisters();                       // Update.
+  updateRegisters();                 // Update.
 }
 
 void Si4703_Breakout::readRDS(char* buffer, long timeout) {
@@ -124,75 +185,6 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout) {
   }
 
   buffer[8] = '\0';
-}
-
-// To get the Si4703 inito 2-wire mode, SEN needs to be high and SDIO needs to
-// be low after a reset.
-// The breakout board has SEN pulled high, but also has SDIO pulled high.
-// Therefore, after a normal power up
-// the Si4703 will be in an unknown state. RST must be controlled.
-int Si4703_Breakout::si4703_init() {
-  wiringPiSetupGpio();  // Setup gpio access in BCM mode.
-
-  pinMode(resetPin_, OUTPUT);  // gpio bit-banging to get 2-wire (I2C) mode.
-  pinMode(sdioPin_, OUTPUT);   // SDIO is connected to A4 for I2C.
-
-  digitalWrite(sdioPin_, LOW);    // A low SDIO indicates a 2-wire interface.
-  digitalWrite(resetPin_, LOW);   // Put Si4703 into reset.
-  delay(1);                       // Some delays while we allow pins to settle.
-  digitalWrite(resetPin_, HIGH);  // Bring Si4703 out of reset with SDIO set to
-                                  // low and SEN pulled high with on-board
-                                  // resistor.
-  delay(1);                       // Allow Si4703 to come out of reset.
-
-  // Setup I2C.
-  char filename[20];
-  // Handle both RPi board revisions.
-  snprintf(filename, 19, "/dev/i2c-%d", piBoardRev());
-  if ((si4703_fd_ = open(filename, O_RDWR)) < 0) {  // Open I2C slave device.
-    perror(filename);
-    return (FAIL);
-  }
-
-  if (ioctl(si4703_fd_, I2C_SLAVE, SI4703) < 0) {  // Set device address 0x10.
-    perror("Failed to aquire bus access and/or talk to slave");
-    return (FAIL);
-  }
-
-  if (ioctl(si4703_fd_, I2C_PEC, 1) < 0) {  // Enable "Packet Error Checking".
-    perror("Failed to enable PEC");
-    return (FAIL);
-  }
-
-  readRegisters();  // Read the current register set.
-
-  // Enable the oscillator, from AN230 page 9, rev 0.61 (works).
-  registers_[0x07] = 0x8100;
-  updateRegisters();  // Update.
-
-  delay(500);  // Wait for clock to settle - from AN230 page 9.
-
-  readRegisters();                      // Read the current register set.
-  registers_[POWERCFG] = 0x4001;  // Enable the IC.
-
-  registers_[SYSCONFIG1] |= (1 << RDS);  // Enable RDS.
-  registers_[SYSCONFIG1] |= (1 << DE);   // 50kHz Europe setup.
-
-  // 100kHz channel spacing for Europe.
-  registers_[SYSCONFIG2] |= (1 << SPACE0);
-  // registers_[SYSCONFIG2] &= 0xFFF0; // Clear volume bits.
-  // registers_[SYSCONFIG2] |= 0x0001; // Set volume to lowest.
-  updateRegisters();  // Update.
-
-  delay(110);  // Max powerup time, from datasheet page 13.
-
-  return (SUCCESS);
-}
-
-void Si4703_Breakout::si4703_exit() {
-  readRegisters();
-  registers_[POWERCFG] = 0x0000;  // Clear Enable Bit disables chip.
-  updateRegisters();
 }
 
 // Read the entire register control set from 0x00 to 0x0F.
@@ -278,7 +270,7 @@ int Si4703_Breakout::seek(uint8_t seekDirection) {
   }
 
   registers_[POWERCFG] |= (1 << SEEK);  // Start seek.
-  updateRegisters();                          // Seeking will now start.
+  updateRegisters();                    // Seeking will now start.
 
   // Poll to see if STC is set.
   while (1) {
