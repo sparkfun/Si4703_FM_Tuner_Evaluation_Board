@@ -60,17 +60,17 @@ int Si4703_Breakout::powerOn() {
   snprintf(filename, 19, "/dev/i2c-%d", piBoardRev());
   if ((si4703_fd_ = open(filename, O_RDWR)) < 0) {  // Open I2C slave device.
     perror(filename);
-    return (FAIL);
+    return FAIL;
   }
 
   if (ioctl(si4703_fd_, I2C_SLAVE, SI4703) < 0) {  // Set device address 0x10.
     perror("Failed to aquire bus access and/or talk to slave");
-    return (FAIL);
+    return FAIL;
   }
 
   if (ioctl(si4703_fd_, I2C_PEC, 1) < 0) {  // Enable "Packet Error Checking".
     perror("Failed to enable PEC");
-    return (FAIL);
+    return FAIL;
   }
 
   readRegisters();  // Read the current register set.
@@ -95,7 +95,7 @@ int Si4703_Breakout::powerOn() {
 
   delay(110);  // Max powerup time, from datasheet page 13.
 
-  return (SUCCESS);
+  return SUCCESS;
 }
 
 void Si4703_Breakout::powerOff() {
@@ -211,7 +211,7 @@ uint8_t Si4703_Breakout::readRegisters() {
   // We want to read the entire register set from 0x0A to 0x09 = 32 bytes.
   if (read(si4703_fd_, buffer, 32) != 32) {
     perror("Could not read from I2C slave device");
-    return (FAIL);
+    return FAIL;
   }
 
   // We may want some time-out error here.
@@ -227,7 +227,7 @@ uint8_t Si4703_Breakout::readRegisters() {
       break;  // We're done!
   }
 
-  return (SUCCESS);
+  return SUCCESS;
 }
 
 // Write the current 9 control registers (0x02 to 0x07) to the Si4703.
@@ -247,10 +247,10 @@ uint8_t Si4703_Breakout::updateRegisters() {
 
   if (write(si4703_fd_, buffer, 12) < 12) {
     perror("Could not write to I2C slave device");
-    return (FAIL);
+    return FAIL;
   }
 
-  return (SUCCESS);
+  return SUCCESS;
 }
 
 void Si4703_Breakout::printRegisters() {
@@ -305,7 +305,7 @@ int Si4703_Breakout::seek(uint8_t seekDirection) {
 
   if (valueSFBL) {  // The bit was set indicating we hit a band limit or failed
                     // to find a station.
-    return (FAIL);
+    return FAIL;
   }
 
   return getChannel();
