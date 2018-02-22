@@ -85,7 +85,7 @@ void Si4703_Breakout::setVolume(int volume) {
 
 void Si4703_Breakout::readRDS(char* buffer, long timeout) {
   long endTime = millis() + timeout;
-  boolean completed[] = {false, false, false, false};
+  bool completed[] = {false, false, false, false};
   int completedCount = 0;
 
   while (completedCount < 4 && millis() < endTime) {

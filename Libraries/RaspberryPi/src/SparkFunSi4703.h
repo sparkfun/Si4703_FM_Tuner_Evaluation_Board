@@ -59,9 +59,6 @@ cables. Too short of a cable may degrade reception.
 
 #include <inttypes.h>
 
-typedef uint8_t boolean;
-typedef uint8_t byte;
-
 class Si4703_Breakout {
  public:
   Si4703_Breakout(int resetPin, int sdioPin);
