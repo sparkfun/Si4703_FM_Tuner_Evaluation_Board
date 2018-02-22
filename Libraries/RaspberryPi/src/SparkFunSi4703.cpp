@@ -14,6 +14,22 @@
 
 #include "SparkFunSi4703.h"
 
+namespace {
+
+uint16_t SwapEndian(uint16_t val) {
+  return (val >> 8) | (val << 8);
+}
+
+uint16_t ToLittleEndian(uint16_t val) {
+  return SwapEndian(val);
+}
+
+uint16_t ToBigEndian(uint16_t val) {
+  return SwapEndian(val);
+}
+
+}  // anonymous namespace
+
 Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin) {
   resetPin_ = resetPin;
   sdioPin_ = sdioPin;
@@ -188,7 +204,6 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout) {
 
 // Read the entire register control set from 0x00 to 0x0F.
 uint8_t Si4703_Breakout::readRegisters() {
-  int i = 0;
   uint16_t buffer[16];
 
   // Si4703 begins reading from upper byte of register 0x0A and reads to 0x0F,
@@ -203,12 +218,11 @@ uint8_t Si4703_Breakout::readRegisters() {
 
   // Remember, register 0x0A comes in first so we have to shuffle the array
   // around a bit.
+  int i = 0;
   for (int x = 0x0A;; x++) {
     if (x == 0x10)
       x = 0;  // Loop back to zero.
-    registers_[x] =
-        (buffer[i] >> 8) | (buffer[i] << 8);  // Convert to little-endian.
-    i++;
+    registers_[x] = ToLittleEndian(buffer[i++]);
     if (x == 0x09)
       break;  // We're done!
   }
@@ -227,12 +241,9 @@ uint8_t Si4703_Breakout::updateRegisters() {
   // a write-to address
   // First we send the 0x02 to 0x07 control registers, first upper byte, then
   // lower byte and so on.
-  // In general, we should not write to registers 0x08 and 0x09
-  for (int regSpot = 0x02; regSpot < 0x08; regSpot++) {
-    buffer[i] = (registers_[regSpot] >> 8) |
-                (registers_[regSpot] << 8);  // Convert to big-endian.
-    i++;
-  }
+  // In general, we should not write to registers 0x08 and 0x09.
+  for (int regSpot = 0x02; regSpot < 0x08; regSpot++)
+    buffer[i++] = ToBigEndian(registers_[regSpot]);
 
   if (write(si4703_fd_, buffer, 12) < 12) {
     perror("Could not write to I2C slave device");
