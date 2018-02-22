@@ -59,9 +59,11 @@ cables. Too short of a cable may degrade reception.
 
 #include <inttypes.h>
 
+enum class Region { US, Europe };
+
 class Si4703_Breakout {
  public:
-  Si4703_Breakout(int resetPin, int sdioPin);
+  Si4703_Breakout(int resetPin, int sdioPin, Region region = Region::US);
   int powerOn();  // call in setup.
   void powerOff();
   void setChannel(int channel);  // 3 digit channel number.
@@ -131,11 +133,15 @@ class Si4703_Breakout {
   uint8_t readRegisters();
   uint8_t updateRegisters();
   int seek(uint8_t seekDirection);
+  float channelFreqMult() const;
+  int channelRegisterToChannel(uint16_t channel) const;
+  uint16_t channelToRegisterChannel(int channel) const;
 
   int resetPin_;
   int sdioPin_;
   uint16_t registers_[16];  // There are 16 registers, each 16 bits large.
   int si4703_fd_;           // I2C file descriptor.
+  Region region_;
 };
 
 #endif

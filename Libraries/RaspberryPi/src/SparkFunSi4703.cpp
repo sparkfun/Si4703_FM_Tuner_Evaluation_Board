@@ -16,6 +16,8 @@
 
 namespace {
 
+uint16_t CHANNEL_MIN = 875;
+
 uint16_t SwapEndian(uint16_t val) {
   return (val >> 8) | (val << 8);
 }
@@ -30,10 +32,8 @@ uint16_t ToBigEndian(uint16_t val) {
 
 }  // anonymous namespace
 
-Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin) {
-  resetPin_ = resetPin;
-  sdioPin_ = sdioPin;
-}
+Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, Region region)
+    : resetPin_(resetPin), sdioPin_(sdioPin), region_(region) {}
 
 // To get the Si4703 inito 2-wire mode, SEN needs to be high and SDIO needs to
 // be low after a reset.
@@ -85,13 +85,15 @@ int Si4703_Breakout::powerOn() {
   registers_[POWERCFG] = 0x4001;  // Enable the IC.
 
   registers_[SYSCONFIG1] |= RDS;  // Enable RDS.
-  registers_[SYSCONFIG1] |= DE;   // 50kHz Europe setup.
+  if (region_ == Region::Europe) {
+    registers_[SYSCONFIG1] |= DE;
 
-  // 100kHz channel spacing for Europe.
-  registers_[SYSCONFIG2] |= SPACE0;
-  // registers_[SYSCONFIG2] &= 0xFFF0; // Clear volume bits.
-  // registers_[SYSCONFIG2] |= 0x0001; // Set volume to lowest.
-  updateRegisters();  // Update.
+    // 100kHz channel spacing for Europe.
+    registers_[SYSCONFIG2] |= SPACE0;
+  }
+  registers_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
+  registers_[SYSCONFIG2] |= 0x0001;  // Set volume to lowest.
+  updateRegisters();
 
   delay(110);  // Max powerup time, from datasheet page 13.
 
@@ -311,15 +313,43 @@ int Si4703_Breakout::seek(uint8_t seekDirection) {
   return getChannel();
 }
 
+float Si4703_Breakout::channelFreqMult() const {
+  switch (region_) {
+    case Region::US:
+      return 2;
+    case Region::Europe:
+      return 0.100;
+  }
+}
+
+// Given the channel value from the READCHAN registry convert it to
+// integer channel representation.
+int Si4703_Breakout::channelRegisterToChannel(uint16_t channel) const {
+  return CHANNEL_MIN + channelFreqMult() * channel;
+}
+
+uint16_t Si4703_Breakout::channelToRegisterChannel(int channel) const {
+  // Freq(MHz) = 0.200(in USA) * Channel + 87.5MHz
+  // 97.3 = 0.2 * Chan + 87.5
+  // 9.8 / 0.2 = 49
+  int new_channel = channel * 10;  // 973 * 10 = 9730
+  new_channel -= 8750;             // 9730 - 8750 = 980
+  switch (region_) {
+    case Region::US:
+      new_channel /= 20;  // 980 / 20 = 49
+      break;
+    case Region::Europe:
+      new_channel /= 10;  // 980 / 10 = 98
+      break;
+  }
+  return new_channel;
+}
+
 // Reads the current channel from READCHAN.
 // Returns a number like 973 for 97.3MHz.
 int Si4703_Breakout::getChannel() {
   readRegisters();
-  int channel = registers_[READCHAN] &
-                0x03FF;  // Mask out everything but the lower 10 bits.
-  // Freq(MHz) = 0.100(in Europe) * Channel + 87.5MHz
-  // X = 0.1 * Chan + 87.5
-  channel += 875;  // 98 + 875 = 973
-
-  return (channel);
+  // Mask out everything but the lower 10 bits.
+  const int channel = registers_[READCHAN] & 0x03FF;
+  return channelRegisterToChannel(channel);
 }
