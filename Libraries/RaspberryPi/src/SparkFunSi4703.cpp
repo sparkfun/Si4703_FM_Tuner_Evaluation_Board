@@ -68,11 +68,11 @@ int Si4703_Breakout::powerOn() {
   readRegisters();                // Read the current register set.
   registers_[POWERCFG] = 0x4001;  // Enable the IC.
 
-  registers_[SYSCONFIG1] |= (1 << RDS);  // Enable RDS.
-  registers_[SYSCONFIG1] |= (1 << DE);   // 50kHz Europe setup.
+  registers_[SYSCONFIG1] |= RDS;  // Enable RDS.
+  registers_[SYSCONFIG1] |= DE;   // 50kHz Europe setup.
 
   // 100kHz channel spacing for Europe.
-  registers_[SYSCONFIG2] |= (1 << SPACE0);
+  registers_[SYSCONFIG2] |= SPACE0;
   // registers_[SYSCONFIG2] &= 0xFFF0; // Clear volume bits.
   // registers_[SYSCONFIG2] |= 0x0001; // Set volume to lowest.
   updateRegisters();  // Update.
@@ -98,9 +98,9 @@ void Si4703_Breakout::setChannel(int channel) {
 
   // These steps come from AN230 page 20 rev 0.5.
   readRegisters();
-  registers_[CHANNEL] &= 0xFE00;       // Clear out the channel bits.
-  registers_[CHANNEL] |= newChannel;   // Mask in the new channel.
-  registers_[CHANNEL] |= (1 << TUNE);  // Set the TUNE bit to start.
+  registers_[CHANNEL] &= 0xFE00;      // Clear out the channel bits.
+  registers_[CHANNEL] |= newChannel;  // Mask in the new channel.
+  registers_[CHANNEL] |= TUNE;        // Set the TUNE bit to start.
   updateRegisters();
 
   delay(60);  // Wait 60ms - you can use or skip this delay.
@@ -108,19 +108,18 @@ void Si4703_Breakout::setChannel(int channel) {
   // Poll to see if STC is set.
   while (1) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & (1 << STC)) != 0)
+    if ((registers_[STATUSRSSI] & STC) != 0)
       break;  // Tuning complete!
   }
 
   readRegisters();
-  // Clear the tune after a tune has completed.
-  registers_[CHANNEL] &= ~(1 << TUNE);
+  registers_[CHANNEL] &= ~TUNE;  // Clear the tune after a tune has completed.
   updateRegisters();
 
   // Wait for the si4703 to clear the STC as well.
   while (1) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & (1 << STC)) == 0)
+    if ((registers_[STATUSRSSI] & STC) == 0)
       break;  // Tuning complete!
   }
 }
@@ -152,7 +151,7 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout) {
   while (completedCount < 4 && millis() < endTime) {
     readRegisters();
 
-    if (registers_[STATUSRSSI] & (1 << RDSR)) {
+    if (registers_[STATUSRSSI] & RDSR) {
       // ls 2 bits of B determine the 4 letter pairs.
       // once we have a full set return
       // if you get nothing after 20 readings return with empty string.
@@ -259,37 +258,37 @@ void Si4703_Breakout::printRegisters() {
 int Si4703_Breakout::seek(uint8_t seekDirection) {
   readRegisters();
   // Set seek mode wrap bit
-  registers_[POWERCFG] |= (1 << SKMODE);  // Allow wrap.
-  // registers_[POWERCFG] &= ~(1<<SKMODE); //Disallow wrap - if you
+  registers_[POWERCFG] |= SKMODE;  // Allow wrap.
+  // registers_[POWERCFG] &= ~SKMODE; //Disallow wrap - if you
   // disallow wrap, you may want to tune to 87.5 first.
   if (seekDirection == SEEK_DOWN) {
     // Seek down is the default upon reset.
-    registers_[POWERCFG] &= ~(1 << SEEKUP);
+    registers_[POWERCFG] &= ~SEEKUP;
   } else {
-    registers_[POWERCFG] |= 1 << SEEKUP;  // Set the bit to seek up.
+    registers_[POWERCFG] |= SEEKUP;  // Set the bit to seek up.
   }
 
-  registers_[POWERCFG] |= (1 << SEEK);  // Start seek.
-  updateRegisters();                    // Seeking will now start.
+  registers_[POWERCFG] |= SEEK;  // Start seek.
+  updateRegisters();             // Seeking will now start.
 
   // Poll to see if STC is set.
   while (1) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & (1 << STC)) != 0)
+    if ((registers_[STATUSRSSI] & STC) != 0)
       break;  // Tuning complete!
   }
 
   readRegisters();
   // Store the value of SFBL.
-  int valueSFBL = registers_[STATUSRSSI] & (1 << SFBL);
+  int valueSFBL = registers_[STATUSRSSI] & SFBL;
   // Clear the seek bit after seek has completed.
-  registers_[POWERCFG] &= ~(1 << SEEK);
+  registers_[POWERCFG] &= ~SEEK;
   updateRegisters();
 
   // Wait for the si4703 to clear the STC as well.
   while (1) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & (1 << STC)) == 0)
+    if ((registers_[STATUSRSSI] & STC) == 0)
       break;  // Tuning complete!
   }
 

@@ -103,30 +103,30 @@ class Si4703_Breakout {
   static const uint16_t RDSD = 0x0F;
 
   // Register 0x02 - POWERCFG
-  static const uint16_t SMUTE = 15;
-  static const uint16_t DMUTE = 14;
-  static const uint16_t SKMODE = 10;
-  static const uint16_t SEEKUP = 9;
-  static const uint16_t SEEK = 8;
+  static const uint16_t SMUTE = 1 << 15;
+  static const uint16_t DMUTE = 1 << 14;
+  static const uint16_t SKMODE = 1 << 10;
+  static const uint16_t SEEKUP = 1 << 9;
+  static const uint16_t SEEK = 1 << 8;
 
   // Register 0x03 - CHANNEL
-  static const uint16_t TUNE = 15;
+  static const uint16_t TUNE = 1 << 15;
 
   // Register 0x04 - SYSCONFIG1
-  static const uint16_t RDS = 12;
-  static const uint16_t DE = 11;
+  static const uint16_t RDS = 1 << 12;
+  static const uint16_t DE = 1 << 11;
 
   // Register 0x05 - SYSCONFIG2
-  static const uint16_t SPACE1 = 5;
-  static const uint16_t SPACE0 = 4;
+  static const uint16_t SPACE1 = 1 << 5;
+  static const uint16_t SPACE0 = 1 << 4;
 
   // Register 0x0A - STATUSRSSI
-  static const uint16_t RDSR = 15;
-  static const uint16_t STC = 14;
-  static const uint16_t SFBL = 13;
-  static const uint16_t AFCRL = 12;
-  static const uint16_t RDSS = 11;
-  static const uint16_t STEREO = 8;
+  static const uint16_t RDSR = 1 << 15;
+  static const uint16_t STC = 1 << 14;
+  static const uint16_t SFBL = 1 << 13;
+  static const uint16_t AFCRL = 1 << 12;
+  static const uint16_t RDSS = 1 << 11;
+  static const uint16_t STEREO = 1 << 8;
 
   uint8_t readRegisters();
   uint8_t updateRegisters();
