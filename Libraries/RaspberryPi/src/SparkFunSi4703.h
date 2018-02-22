@@ -78,17 +78,6 @@ class Si4703_Breakout {
   void printRegisters();
 
  private:
-  int _resetPin;
-  int _sdioPin;
-  int si4703_init();
-  void si4703_exit();
-  uint8_t readRegisters();
-  uint8_t updateRegisters();
-  int seek(uint8_t seekDirection);
-
-  uint16_t si4703_registers[16];  // There are 16 registers, each 16 bits large.
-  int si4703_fd;                  // I2C file descriptor.
-
   static const uint16_t FAIL = 0;
   static const uint16_t SUCCESS = 1;
 
@@ -141,6 +130,17 @@ class Si4703_Breakout {
   static const uint16_t AFCRL = 12;
   static const uint16_t RDSS = 11;
   static const uint16_t STEREO = 8;
+
+  int si4703_init();
+  void si4703_exit();
+  uint8_t readRegisters();
+  uint8_t updateRegisters();
+  int seek(uint8_t seekDirection);
+
+  int resetPin_;
+  int sdioPin_;
+  uint16_t registers_[16];  // There are 16 registers, each 16 bits large.
+  int si4703_fd_;           // I2C file descriptor.
 };
 
 #endif
