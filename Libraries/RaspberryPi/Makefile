@@ -13,3 +13,7 @@ clean:
 .PHONY: run
 run: Radio
 	sudo ./Radio
+
+.PHONY: format
+format:
+	clang-format -i --style=Chromium ${source_files}
