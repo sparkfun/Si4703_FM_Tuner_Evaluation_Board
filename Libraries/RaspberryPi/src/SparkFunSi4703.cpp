@@ -16,6 +16,12 @@
 
 namespace {
 
+// Max powerup time, from datasheet page 13.
+uint16_t MAX_POWERUP_TIME = 110;
+
+// Delay for clock to settle - from AN230 page 9.
+uint16_t CLOCK_SETTLE_DELAY = 500;
+
 uint16_t CHANNEL_MIN = 875;
 
 uint16_t SwapEndian(uint16_t val) {
@@ -77,7 +83,7 @@ int Si4703_Breakout::powerOn() {
   registers_[0x07] = 0x8100;
   updateRegisters();  // Update.
 
-  delay(500);  // Wait for clock to settle - from AN230 page 9.
+  delay(CLOCK_SETTLE_DELAY);
 
   readRegisters();                // Read the current register set.
   registers_[POWERCFG] = 0x4001;  // Enable the IC.
@@ -93,7 +99,7 @@ int Si4703_Breakout::powerOn() {
   registers_[SYSCONFIG2] |= 0x0001;  // Set volume to lowest.
   updateRegisters();
 
-  delay(110);  // Max powerup time, from datasheet page 13.
+  delay(MAX_POWERUP_TIME);
 
   return SUCCESS;
 }
@@ -122,7 +128,7 @@ void Si4703_Breakout::setChannel(int channel) {
   delay(60);  // Wait 60ms - you can use or skip this delay.
 
   // Poll to see if STC is set.
-  while (1) {
+  while (true) {
     readRegisters();
     if ((registers_[STATUSRSSI] & STC) != 0)
       break;  // Tuning complete!
@@ -133,7 +139,7 @@ void Si4703_Breakout::setChannel(int channel) {
   updateRegisters();
 
   // Wait for the si4703 to clear the STC as well.
-  while (1) {
+  while (true) {
     readRegisters();
     if ((registers_[STATUSRSSI] & STC) == 0)
       break;  // Tuning complete!
@@ -283,7 +289,7 @@ int Si4703_Breakout::seek(SeekDirection direction) {
   updateRegisters();             // Seeking will now start.
 
   // Poll to see if STC is set.
-  while (1) {
+  while (true) {
     readRegisters();
     if ((registers_[STATUSRSSI] & STC) != 0)
       break;  // Tuning complete!
@@ -297,7 +303,7 @@ int Si4703_Breakout::seek(SeekDirection direction) {
   updateRegisters();
 
   // Wait for the si4703 to clear the STC as well.
-  while (1) {
+  while (true) {
     readRegisters();
     if ((registers_[STATUSRSSI] & STC) == 0)
       break;  // Tuning complete!
