@@ -42,10 +42,9 @@ Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, Region region)
     : resetPin_(resetPin), sdioPin_(sdioPin), region_(region) {}
 
 // To get the Si4703 inito 2-wire mode, SEN needs to be high and SDIO needs to
-// be low after a reset.
-// The breakout board has SEN pulled high, but also has SDIO pulled high.
-// Therefore, after a normal power up
-// the Si4703 will be in an unknown state. RST must be controlled.
+// be low after a reset. The breakout board has SEN pulled high, but also has
+// SDIO pulled high. Therefore, after a normal power up the Si4703 will be in an
+// unknown state. RST must be controlled
 int Si4703_Breakout::powerOn() {
   wiringPiSetupGpio();  // Setup gpio access in BCM mode.
 
@@ -68,7 +67,7 @@ int Si4703_Breakout::powerOn() {
   }
 
   if (ioctl(si4703_fd_, I2C_SLAVE, SI4703) < 0) {  // Set device address 0x10.
-    perror("Failed to aquire bus access and/or talk to slave");
+    perror("Failed to acquire bus access and/or talk to slave");
     return FAIL;
   }
 
@@ -81,7 +80,7 @@ int Si4703_Breakout::powerOn() {
 
   // Enable the oscillator, from AN230 page 9, rev 0.61 (works).
   registers_[0x07] = 0x8100;
-  updateRegisters();  // Update.
+  updateRegisters();
 
   delay(CLOCK_SETTLE_DELAY);
 
@@ -155,7 +154,7 @@ int Si4703_Breakout::seekDown() {
 }
 
 void Si4703_Breakout::setVolume(int volume) {
-  readRegisters();  // Read the current register set.
+  readRegisters();
   if (volume < 0)
     volume = 0;
   if (volume > 15)
@@ -170,13 +169,12 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout) {
   bool completed[] = {false, false, false, false};
   int completedCount = 0;
 
+  // Read until we get four pairs of letters, or until there is a timeout.
   while (completedCount < 4 && millis() < endTime) {
     readRegisters();
 
     if (registers_[STATUSRSSI] & RDSR) {
-      // ls 2 bits of B determine the 4 letter pairs.
-      // once we have a full set return
-      // if you get nothing after 20 readings return with empty string.
+      // lowest order two bits of B are the word pair index.
       uint16_t b = registers_[RDSB];
       int index = b & 0x03;
 
@@ -187,11 +185,6 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout) {
         char Dl = (registers_[RDSD] & 0x00FF);
         buffer[index * 2] = Dh;
         buffer[index * 2 + 1] = Dl;
-        // Serial.print(registers_[RDSD]); Serial.print(" ");
-        // Serial.print(index);Serial.print(" ");
-        // Serial.write(Dh);
-        // Serial.write(Dl);
-        // Serial.println();
       }
       delay(40);  // Wait for the RDS bit to clear.
     } else {
@@ -244,7 +237,7 @@ uint8_t Si4703_Breakout::updateRegisters() {
   uint16_t buffer[6];
 
   // A write command automatically begins with register 0x02 so no need to send
-  // a write-to address
+  // a write-to address.
   // First we send the 0x02 to 0x07 control registers, first upper byte, then
   // lower byte and so on.
   // In general, we should not write to registers 0x08 and 0x09.
@@ -274,9 +267,9 @@ void Si4703_Breakout::printRegisters() {
 // Returns zero if failed.
 int Si4703_Breakout::seek(SeekDirection direction) {
   readRegisters();
-  // Set seek mode wrap bit
+  // Set seek mode wrap bit.
   registers_[POWERCFG] |= SKMODE;  // Allow wrap.
-  // registers_[POWERCFG] &= ~SKMODE; //Disallow wrap - if you
+  // registers_[POWERCFG] &= ~SKMODE; // Disallow wrap - if you
   // disallow wrap, you may want to tune to 87.5 first.
   if (direction == SeekDirection::Down) {
     // Seek down is the default upon reset.
