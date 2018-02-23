@@ -54,10 +54,8 @@ int Si4703_Breakout::powerOn() {
                                   // resistor.
   delay(1);                       // Allow Si4703 to come out of reset.
 
-  // Setup I2C.
-  char filename[20];
-  // Handle both RPi board revisions.
-  snprintf(filename, 19, "/dev/i2c-%d", piBoardRev());
+  // Setup I2C
+  const char filename[] = "/dev/i2c-1";
   if ((si4703_fd_ = open(filename, O_RDWR)) < 0) {  // Open I2C slave device.
     perror(filename);
     return FAIL;
