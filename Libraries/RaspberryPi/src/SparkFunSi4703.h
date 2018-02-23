@@ -59,7 +59,7 @@ cables. Too short of a cable may degrade reception.
 
 #include <inttypes.h>
 
-enum class Region { US, Europe };
+enum class Region { US, Europe, Japan };
 
 class Si4703_Breakout {
  public:
@@ -78,6 +78,14 @@ class Si4703_Breakout {
 
  private:
   enum class SeekDirection { Up, Down };
+  // See AN230 Programmers Guide section 3.4.1 for bands. Band is bits 6:7 in
+  // SYSCONFIG2 register.
+  enum Band : uint16_t {
+    Band_US_Europe = 0b0000000,
+    Band_Japan_Wide = 0b0100000,
+    Band_Japan = 0b1000000,
+    Band_Reserved = 0b1100000
+  };
 
   static const uint16_t FAIL = 0;
   static const uint16_t SUCCESS = 1;
@@ -132,6 +140,7 @@ class Si4703_Breakout {
   uint8_t updateRegisters();
   float seek(SeekDirection direction);
   float channelSpacing() const;
+  float minFrequency() const;
   float channelToFrequency(uint16_t channel) const;
   uint16_t frequencyToChannel(float frequency) const;
 
@@ -140,6 +149,7 @@ class Si4703_Breakout {
   uint16_t registers_[16];  // There are 16 registers, each 16 bits large.
   int si4703_fd_;           // I2C file descriptor.
   Region region_;
+  Band band_;
 };
 
 #endif

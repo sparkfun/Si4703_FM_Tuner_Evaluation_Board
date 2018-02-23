@@ -24,8 +24,6 @@ uint16_t MAX_POWERUP_TIME = 110;
 // Delay for clock to settle - from AN230 page 9.
 uint16_t CLOCK_SETTLE_DELAY = 500;
 
-const float MIN_FREQ = 87.5f;
-
 uint16_t SwapEndian(uint16_t val) {
   return (val >> 8) | (val << 8);
 }
@@ -48,7 +46,19 @@ bool FloatsEqual(float a, float b) {
 }  // anonymous namespace
 
 Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, Region region)
-    : resetPin_(resetPin), sdioPin_(sdioPin), region_(region) {}
+    : resetPin_(resetPin), sdioPin_(sdioPin), region_(region) {
+  switch (region) {
+    case Region::US:
+      band_ = Band_US_Europe;
+      break;
+    case Region::Europe:
+      band_ = Band_US_Europe;
+      break;
+    case Region::Japan:
+      band_ = Band_Japan_Wide;
+      break;
+  }
+}
 
 // To get the Si4703 inito 2-wire mode, SEN needs to be high and SDIO needs to
 // be low after a reset. The breakout board has SEN pulled high, but also has
@@ -103,6 +113,7 @@ int Si4703_Breakout::powerOn() {
     // 100kHz channel spacing for Europe.
     registers_[SYSCONFIG2] |= SPACE0;
   }
+  registers_[SYSCONFIG2] |= band_;
   registers_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
   registers_[SYSCONFIG2] |= 0x0001;  // Set volume to lowest.
   updateRegisters();
@@ -120,7 +131,7 @@ void Si4703_Breakout::powerOff() {
 
 void Si4703_Breakout::setFrequency(float frequency) {
   // See frequencyToChannel for source of equation.
-  float fchannel = (frequency - MIN_FREQ) / channelSpacing();
+  float fchannel = (frequency - minFrequency()) / channelSpacing();
   uint16_t channel = frequencyToChannel(frequency);
   if (!FloatsEqual(fchannel, channel)) {
     // The freq must be a multiple of the channel spacing and offset from the
@@ -329,11 +340,20 @@ float Si4703_Breakout::channelSpacing() const {
   }
 }
 
+float Si4703_Breakout::minFrequency() const {
+  switch (band_) {
+    case Band_US_Europe:
+      return 87.5;
+    case Band_Japan:
+      return 76.0;
+  }
+}
+
 // Given the |channel| value from the READCHAN registry convert it to frequency.
 float Si4703_Breakout::channelToFrequency(uint16_t channel) const {
   // This formula is from the AN230 Programmers Guide, section 3.7.1.
   // https://www.silabs.com/documents/public/application-notes/AN230.pdf
-  return channelSpacing() * static_cast<float>(channel) + MIN_FREQ;
+  return channelSpacing() * static_cast<float>(channel) + minFrequency();
 }
 
 // Given a |frequency| convert it to a registry CHANNEL value.
@@ -343,7 +363,7 @@ uint16_t Si4703_Breakout::frequencyToChannel(float frequency) const {
   // Add a small value to account for floating point rounding errors.
   const float epsilon = 0.001f;
   return static_cast<uint16_t>(epsilon +
-                               (frequency - MIN_FREQ) / channelSpacing());
+                               (frequency - minFrequency()) / channelSpacing());
 }
 
 float Si4703_Breakout::getFrequency() {
