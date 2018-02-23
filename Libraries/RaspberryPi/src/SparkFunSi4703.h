@@ -66,14 +66,14 @@ class Si4703_Breakout {
   Si4703_Breakout(int resetPin, int sdioPin, Region region = Region::US);
   int powerOn();  // call in setup.
   void powerOff();
-  void setChannel(int channel);  // 3 digit channel number.
-  int seekUp();                  // returns the tuned channel or 0.
-  int seekDown();
+  void setFrequency(float freqency);  // Frequency in MHz, i.e. 93.5.
+  float seekUp();                     // returns the tuned frequency or 0.
+  float seekDown();
   void setVolume(int volume);  // 0 to 15.
   // |message| must be at least 9 chars. result will be null terminated.
   // |timeout| in milliseconds.
   void readRDS(char* message, long timeout);
-  int getChannel();
+  float getFrequency();
   void printRegisters();
 
  private:
@@ -130,10 +130,10 @@ class Si4703_Breakout {
 
   uint8_t readRegisters();
   uint8_t updateRegisters();
-  int seek(SeekDirection direction);
-  float channelFreqMult() const;
-  int channelRegisterToChannel(uint16_t channel) const;
-  uint16_t channelToRegisterChannel(int channel) const;
+  float seek(SeekDirection direction);
+  float channelSpacing() const;
+  float channelToFrequency(uint16_t channel) const;
+  uint16_t frequencyToChannel(float frequency) const;
 
   int resetPin_;
   int sdioPin_;

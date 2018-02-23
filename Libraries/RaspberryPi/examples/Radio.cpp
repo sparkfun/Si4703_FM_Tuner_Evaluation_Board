@@ -26,12 +26,11 @@ int main() {
   Si4703_Breakout radio(resetPin, sdaPin);
   radio.powerOn();
   radio.setVolume(5);
-  radio.setChannel(1040);  // FM4 104.0Mhz (Austria).
+  radio.setFrequency(105.3);
 
   char rdsBuffer[10] = {0};
   radio.readRDS(rdsBuffer, 15000);  // timeout 15sec.
-  printf("Listening to station: %s %.1f\n", rdsBuffer,
-         radio.getChannel() / 10.0);
+  printf("Listening to station: %s %.1f\n", rdsBuffer, radio.getFrequency());
 
   radio.printRegisters();
 

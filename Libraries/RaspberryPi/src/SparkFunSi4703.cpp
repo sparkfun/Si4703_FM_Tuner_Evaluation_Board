@@ -4,6 +4,8 @@
 // Modified work Copyright 13.09.2013 Christoph Thoma
 //
 
+#include <cmath>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -22,7 +24,7 @@ uint16_t MAX_POWERUP_TIME = 110;
 // Delay for clock to settle - from AN230 page 9.
 uint16_t CLOCK_SETTLE_DELAY = 500;
 
-uint16_t CHANNEL_MIN = 875;
+const float MIN_FREQ = 87.5f;
 
 uint16_t SwapEndian(uint16_t val) {
   return (val >> 8) | (val << 8);
@@ -34,6 +36,13 @@ uint16_t ToLittleEndian(uint16_t val) {
 
 uint16_t ToBigEndian(uint16_t val) {
   return SwapEndian(val);
+}
+
+// Determine if two float values are "equal enough" - i.e. to within some small
+// value.
+bool FloatsEqual(float a, float b) {
+  const float epsilon = 0.02;
+  return std::abs(a - b) < epsilon;
 }
 
 }  // anonymous namespace
@@ -109,19 +118,19 @@ void Si4703_Breakout::powerOff() {
   updateRegisters();
 }
 
-void Si4703_Breakout::setChannel(int channel) {
-  // Freq(MHz) = 0.200(in USA) * Channel + 87.5MHz
-  // 97.3 = 0.2 * Chan + 87.5
-  // 9.8 / 0.2 = 49
-  int newChannel = channel * 10;  // 973 * 10 = 9730
-  newChannel -= 8750;             // 9730 - 8750 = 980
-  newChannel /= 10;               // 980 / 10 = 98
-
-  // These steps come from AN230 page 20 rev 0.5.
+void Si4703_Breakout::setFrequency(float frequency) {
+  // See frequencyToChannel for source of equation.
+  float fchannel = (frequency - MIN_FREQ) / channelSpacing();
+  uint16_t channel = frequencyToChannel(frequency);
+  if (!FloatsEqual(fchannel, channel)) {
+    // The freq must be a multiple of the channel spacing and offset from the
+    // minimum freq.
+    return;
+  }
   readRegisters();
-  registers_[CHANNEL] &= 0xFE00;      // Clear out the channel bits.
-  registers_[CHANNEL] |= newChannel;  // Mask in the new channel.
-  registers_[CHANNEL] |= TUNE;        // Set the TUNE bit to start.
+  registers_[CHANNEL] &= 0xFE00;   // Clear out the channel bits.
+  registers_[CHANNEL] |= channel;  // Mask in the new channel.
+  registers_[CHANNEL] |= TUNE;     // Set the TUNE bit to start.
   updateRegisters();
 
   delay(60);  // Wait 60ms - you can use or skip this delay.
@@ -145,11 +154,11 @@ void Si4703_Breakout::setChannel(int channel) {
   }
 }
 
-int Si4703_Breakout::seekUp() {
+float Si4703_Breakout::seekUp() {
   return seek(SeekDirection::Up);
 }
 
-int Si4703_Breakout::seekDown() {
+float Si4703_Breakout::seekDown() {
   return seek(SeekDirection::Down);
 }
 
@@ -265,7 +274,7 @@ void Si4703_Breakout::printRegisters() {
 // Seeks out the next available station.
 // Returns the freq if it made it.
 // Returns zero if failed.
-int Si4703_Breakout::seek(SeekDirection direction) {
+float Si4703_Breakout::seek(SeekDirection direction) {
   readRegisters();
   // Set seek mode wrap bit.
   registers_[POWERCFG] |= SKMODE;  // Allow wrap.
@@ -307,46 +316,39 @@ int Si4703_Breakout::seek(SeekDirection direction) {
     return FAIL;
   }
 
-  return getChannel();
+  return getFrequency();
 }
 
-float Si4703_Breakout::channelFreqMult() const {
+// Return the space between channels (in MHz).
+float Si4703_Breakout::channelSpacing() const {
   switch (region_) {
     case Region::US:
-      return 2;
+      return 0.2f;
     case Region::Europe:
-      return 0.100;
+      return 0.1f;
   }
 }
 
-// Given the channel value from the READCHAN registry convert it to
-// integer channel representation.
-int Si4703_Breakout::channelRegisterToChannel(uint16_t channel) const {
-  return CHANNEL_MIN + channelFreqMult() * channel;
+// Given the |channel| value from the READCHAN registry convert it to frequency.
+float Si4703_Breakout::channelToFrequency(uint16_t channel) const {
+  // This formula is from the AN230 Programmers Guide, section 3.7.1.
+  // https://www.silabs.com/documents/public/application-notes/AN230.pdf
+  return channelSpacing() * static_cast<float>(channel) + MIN_FREQ;
 }
 
-uint16_t Si4703_Breakout::channelToRegisterChannel(int channel) const {
-  // Freq(MHz) = 0.200(in USA) * Channel + 87.5MHz
-  // 97.3 = 0.2 * Chan + 87.5
-  // 9.8 / 0.2 = 49
-  int new_channel = channel * 10;  // 973 * 10 = 9730
-  new_channel -= 8750;             // 9730 - 8750 = 980
-  switch (region_) {
-    case Region::US:
-      new_channel /= 20;  // 980 / 20 = 49
-      break;
-    case Region::Europe:
-      new_channel /= 10;  // 980 / 10 = 98
-      break;
-  }
-  return new_channel;
+// Given a |frequency| convert it to a registry CHANNEL value.
+uint16_t Si4703_Breakout::frequencyToChannel(float frequency) const {
+  // This formula is from the AN230 Programmers Guide, section 3.7.1.
+  // https://www.silabs.com/documents/public/application-notes/AN230.pdf
+  // Add a small value to account for floating point rounding errors.
+  const float epsilon = 0.001f;
+  return static_cast<uint16_t>(epsilon +
+                               (frequency - MIN_FREQ) / channelSpacing());
 }
 
-// Reads the current channel from READCHAN.
-// Returns a number like 973 for 97.3MHz.
-int Si4703_Breakout::getChannel() {
+float Si4703_Breakout::getFrequency() {
   readRegisters();
   // Mask out everything but the lower 10 bits.
   const int channel = registers_[READCHAN] & 0x03FF;
-  return channelRegisterToChannel(channel);
+  return channelToFrequency(channel);
 }
