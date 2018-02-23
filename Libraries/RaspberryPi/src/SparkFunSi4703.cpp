@@ -143,11 +143,11 @@ void Si4703_Breakout::setChannel(int channel) {
 }
 
 int Si4703_Breakout::seekUp() {
-  return seek(SEEK_UP);
+  return seek(SeekDirection::Up);
 }
 
 int Si4703_Breakout::seekDown() {
-  return seek(SEEK_DOWN);
+  return seek(SeekDirection::Down);
 }
 
 void Si4703_Breakout::setVolume(int volume) {
@@ -268,13 +268,13 @@ void Si4703_Breakout::printRegisters() {
 // Seeks out the next available station.
 // Returns the freq if it made it.
 // Returns zero if failed.
-int Si4703_Breakout::seek(uint8_t seekDirection) {
+int Si4703_Breakout::seek(SeekDirection direction) {
   readRegisters();
   // Set seek mode wrap bit
   registers_[POWERCFG] |= SKMODE;  // Allow wrap.
   // registers_[POWERCFG] &= ~SKMODE; //Disallow wrap - if you
   // disallow wrap, you may want to tune to 87.5 first.
-  if (seekDirection == SEEK_DOWN) {
+  if (direction == SeekDirection::Down) {
     // Seek down is the default upon reset.
     registers_[POWERCFG] &= ~SEEKUP;
   } else {

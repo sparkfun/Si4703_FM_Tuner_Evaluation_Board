@@ -77,6 +77,8 @@ class Si4703_Breakout {
   void printRegisters();
 
  private:
+  enum class SeekDirection { Up, Down };
+
   static const uint16_t FAIL = 0;
   static const uint16_t SUCCESS = 1;
 
@@ -86,10 +88,6 @@ class Si4703_Breakout {
   static const uint16_t I2C_FAIL_MAX = 10;  // This is the number of attempts we
                                             // will try to contact the device
                                             // before erroring out.
-  // Direction used for seeking. Default is down.
-  static const uint16_t SEEK_DOWN = 0;
-  static const uint16_t SEEK_UP = 1;
-
   // Define the register names
   static const uint16_t DEVICEID = 0x00;
   static const uint16_t CHIPID = 0x01;
@@ -132,7 +130,7 @@ class Si4703_Breakout {
 
   uint8_t readRegisters();
   uint8_t updateRegisters();
-  int seek(uint8_t seekDirection);
+  int seek(SeekDirection direction);
   float channelFreqMult() const;
   int channelRegisterToChannel(uint16_t channel) const;
   uint16_t channelToRegisterChannel(int channel) const;
