@@ -57,6 +57,8 @@ cables. Too short of a cable may degrade reception.
 #ifndef SparkFunSi4703_h
 #define SparkFunSi4703_h
 
+#include <string>
+
 #include <inttypes.h>
 
 enum class Region { US, Europe, Japan };
@@ -158,11 +160,27 @@ class Si4703_Breakout {
 
   // Register 0x0A - STATUSRSSI
   static const uint16_t RDSR = 1 << 15;
-  static const uint16_t STC = 1 << 14;
-  static const uint16_t SFBL = 1 << 13;
-  static const uint16_t AFCRL = 1 << 12;
-  static const uint16_t RDSS = 1 << 11;
-  static const uint16_t STEREO = 1 << 8;
+  static const uint16_t STC = 1 << 14;    // Seek/Tune Complete.
+  static const uint16_t SFBL = 1 << 13;   // Seek Fail/Band Limit.
+  static const uint16_t AFCRL = 1 << 12;  // AFC Rail.
+  static const uint16_t RDSS = 1 << 11;   // RDS Synchronized.
+  static const uint16_t STEREO = 1 << 8;  // Stereo Indicator.
+  // RSSI (Received Signal Strength Indicator).
+  static const uint16_t RSSI_MASK = 0xf;
+  static const uint16_t BLERA_MASK = 0b11000000000;  // RDS Block A Errors.
+
+  // Register 0x00 - DEVICEID
+  // https://www.silabs.com/documents/public/data-sheets/Si4702-03-C19.pdf
+  static const uint16_t MANUFACTURER_MASK = 0b111111111111;
+  static const uint16_t PART_MASK = 0b1111000000000000;
+
+  // Register 0x01 - CHIPID
+  // https://www.silabs.com/documents/public/data-sheets/Si4702-03-C19.pdf
+  static const uint16_t FIRMWARE_MASK = 0b111111;
+  static const uint16_t DEVICE_MASK = 0b1111000000;
+  static const uint16_t REVISION_MASK = 0b1111110000000000;
+
+  static const char* registerName(uint16_t idx);
 
   uint8_t readRegisters();
   uint8_t updateRegisters();
@@ -171,6 +189,23 @@ class Si4703_Breakout {
   float minFrequency() const;
   float channelToFrequency(uint16_t channel) const;
   uint16_t frequencyToChannel(float frequency) const;
+
+  // The portions of the DEVICEID/CHIPID registers shifted accordingly.
+  uint16_t manufacturer() const;
+  uint16_t part() const;
+  uint16_t firmware() const;
+  uint16_t device() const;
+  uint16_t revision() const;
+  int signalStrength() const;
+  uint16_t blockAErrors() const;
+
+  // The human-readable decoded DEVICEID/CHIPID register values.
+  std::string manufacturer_str() const;
+  std::string part_str() const;
+  std::string firmware_str() const;
+  std::string device_str() const;
+  std::string revision_str() const;
+  std::string blockAErrors_str() const;
 
   int resetPin_;
   int sdioPin_;

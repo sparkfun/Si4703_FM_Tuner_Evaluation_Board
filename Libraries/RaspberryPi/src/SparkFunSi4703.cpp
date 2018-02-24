@@ -5,9 +5,11 @@
 //
 
 #include <cmath>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <wiringPi.h>
@@ -15,6 +17,14 @@
 #include <sys/ioctl.h>
 
 #include "SparkFunSi4703.h"
+
+using std::cerr;
+using std::cout;
+using std::dec;
+using std::endl;
+using std::hex;
+using std::setfill;
+using std::setw;
 
 namespace {
 
@@ -41,6 +51,10 @@ uint16_t ToBigEndian(uint16_t val) {
 bool FloatsEqual(float a, float b) {
   const float epsilon = 0.02;
   return std::abs(a - b) < epsilon;
+}
+
+char ToYesNo(uint16_t val) {
+  return val ? 'Y' : 'N';
 }
 
 }  // anonymous namespace
@@ -137,6 +151,8 @@ void Si4703_Breakout::setFrequency(float frequency) {
   if (!FloatsEqual(fchannel, channel)) {
     // The freq must be a multiple of the channel spacing and offset from the
     // minimum freq.
+    cerr << "Frequency (" << frequency << " MHz) is not a valid frequency."
+         << endl;
     return;
   }
   readRegisters();
@@ -273,13 +289,184 @@ uint8_t Si4703_Breakout::updateRegisters() {
   return SUCCESS;
 }
 
+uint16_t Si4703_Breakout::manufacturer() const {
+  return shadow_reg_[DEVICEID] & MANUFACTURER_MASK;
+}
+
+uint16_t Si4703_Breakout::part() const {
+  return (shadow_reg_[DEVICEID] & PART_MASK) >> 12;
+}
+
+uint16_t Si4703_Breakout::firmware() const {
+  return shadow_reg_[CHIPID] & FIRMWARE_MASK;
+}
+
+uint16_t Si4703_Breakout::device() const {
+  return (shadow_reg_[CHIPID] & DEVICE_MASK) >> 6;
+}
+
+uint16_t Si4703_Breakout::revision() const {
+  return (shadow_reg_[CHIPID] & REVISION_MASK) >> 10;
+}
+
+std::string Si4703_Breakout::manufacturer_str() const {
+  uint16_t mfr = manufacturer();
+  if (mfr == 0x242)
+    return "Silicon Labs";
+  else {
+    std::stringstream ss;
+    ss << "<Unknown: 0x" << hex << mfr << '>';
+    return ss.str();
+  }
+}
+
+std::string Si4703_Breakout::part_str() const {
+  if (part() == 1) {
+    return "Si4700/01/02/03";
+  } else {
+    std::stringstream ss;
+    ss << "<Unknown: 0x" << hex << part() << '>';
+    return ss.str();
+  }
+}
+
+std::string Si4703_Breakout::firmware_str() const {
+  std::stringstream ss;
+  ss << firmware();
+  return ss.str();
+}
+
+std::string Si4703_Breakout::device_str() const {
+  uint16_t dev = device();
+  switch (dev) {
+    case 0b0000:
+      return "Si4700";  // or not yet powered up.
+    case 0b0001:
+      return "Si4702";
+    case 0b1000:
+      return "Si4701";
+    case 0b1001:
+      return "Si4703";
+    default: {
+      std::stringstream ss;
+      ss << "<Unknown: 0x" << hex << dev << '>';
+      return ss.str();
+    }
+  }
+}
+
+std::string Si4703_Breakout::revision_str() const {
+  switch (revision()) {
+    case 1:
+      return "A";
+    case 2:
+      return "B";
+    case 3:
+      return "C";
+    case 4:
+      return "D";
+    default: {
+      std::stringstream ss;
+      ss << "<Unknown: 0x" << hex << revision() << '>';
+      return ss.str();
+    }
+  }
+}
+
+int Si4703_Breakout::signalStrength() const {
+  return shadow_reg_[STATUSRSSI] & RSSI_MASK;
+}
+
+uint16_t Si4703_Breakout::blockAErrors() const {
+  return (shadow_reg_[STATUSRSSI] & BLERA_MASK) >> 9;
+}
+
+std::string Si4703_Breakout::blockAErrors_str() const {
+  uint16_t val = blockAErrors();
+  switch (val) {
+    case 0b00:
+      return "0";
+    case 0b01:
+      return "1-2";
+    case 0b10:
+      return "3-5";
+    case 0b11:
+      return "6+";
+    default: {
+      std::stringstream ss;
+      ss << "<Unknown: 0x" << hex << val << '>';
+      return ss.str();
+    }
+  }
+}
+
+// static
+const char* Si4703_Breakout::registerName(uint16_t idx) {
+  switch (idx) {
+    case DEVICEID:
+      return "  DEVICEID";
+    case CHIPID:
+      return "    CHIPID";
+    case POWERCFG:
+      return "  POWERCFG";
+    case CHANNEL:
+      return "   CHANNEL";
+    case SYSCONFIG1:
+      return "SYSCONFIG1";
+    case SYSCONFIG2:
+      return "SYSCONFIG2";
+    case STATUSRSSI:
+      return "STATUSRSSI";
+    case READCHAN:
+      return "  READCHAN";
+    case RDSA:
+      return "      RDSA";
+    case RDSB:
+      return "      RDSB";
+    case RDSC:
+      return "      RDSC";
+    case RDSD:
+      return "      RDSD";
+    default:
+      return "  RESERVED";
+  }
+}
+
 void Si4703_Breakout::printRegisters() {
-  int i;
+  cout << "Register  Value" << endl;
+  cout << "========= ================================================" << endl;
 
-  printf("Registers\tValues\n");
-
-  for (i = 0; i < 16; i++) {
-    printf("0x%02X:\t%04X\n", i, shadow_reg_[i]);
+  for (int i = 0; i < 16; i++) {
+    cout << registerName(i) << hex << "[0x" << i << "]: 0x" << setfill('0')
+         << setw(4) << shadow_reg_[i];
+    // Now the decoded supplemental data.
+    switch (i) {
+      case DEVICEID:
+        cout << setfill('0') << " (mfr=\"" << manufacturer_str()
+             << "\", part=" << part_str() << ')' << endl;
+        break;
+      case CHIPID:
+        cout << " (firmware=" << firmware_str() << ", device=\"" << device_str()
+             << "\", rev=" << revision_str() << ')' << endl;
+        break;
+      case READCHAN: {
+        const int channel = shadow_reg_[READCHAN] & 0x03FF;
+        cout << " (channel=" << dec << channel << " ("
+             << channelToFrequency(channel) << "MHz))" << endl;
+      } break;
+      case STATUSRSSI:
+        cout << " (RDSR:" << ToYesNo(shadow_reg_[i] & RDSR)
+             << ", STC:" << ToYesNo(shadow_reg_[i] & STC)
+             << ", SFBL:" << ToYesNo(shadow_reg_[i] & SFBL)
+             << ", AFCRL:" << ToYesNo(shadow_reg_[i] & AFCRL)
+             << ", RDSS:" << ToYesNo(shadow_reg_[i] & RDSS)
+             << ", STEREO:" << ToYesNo(shadow_reg_[i] & STEREO)
+             << ", RSSI:" << dec << signalStrength()
+             << ", BLERA:" << blockAErrors_str() << ')' << endl;
+        break;
+      default:
+        cout << endl;
+    }
   }
 }
 
