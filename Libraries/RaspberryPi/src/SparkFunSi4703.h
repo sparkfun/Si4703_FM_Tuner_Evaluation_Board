@@ -174,8 +174,8 @@ class Si4703_Breakout {
 
   int resetPin_;
   int sdioPin_;
-  uint16_t registers_[16];  // There are 16 registers, each 16 bits large.
-  int si4703_fd_;           // I2C file descriptor.
+  uint16_t shadow_reg_[16];  // There are 16 registers, each 16 bits large.
+  int si4703_fd_;            // I2C file descriptor.
   Region region_;
   Band band_;
   ChannelSpacing channel_spacing_;

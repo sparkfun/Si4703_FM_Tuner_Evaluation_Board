@@ -99,24 +99,24 @@ int Si4703_Breakout::powerOn() {
     return FAIL;
   }
 
-  readRegisters();  // Read the current register set.
+  readRegisters();
 
   // Enable the oscillator, from AN230 page 9, rev 0.61 (works).
-  registers_[0x07] = 0x8100;
+  shadow_reg_[0x07] = 0x8100;
   updateRegisters();
 
   delay(CLOCK_SETTLE_DELAY);
 
-  readRegisters();                // Read the current register set.
-  registers_[POWERCFG] = 0x4001;  // Enable the IC.
+  readRegisters();                 // Read the current register set.
+  shadow_reg_[POWERCFG] = 0x4001;  // Enable the IC.
 
-  registers_[SYSCONFIG1] |= RDS;  // Enable RDS.
+  shadow_reg_[SYSCONFIG1] |= RDS;  // Enable RDS.
   if (region_ == Region::Europe)
-    registers_[SYSCONFIG1] |= DE;
-  registers_[SYSCONFIG2] |= band_;
-  registers_[SYSCONFIG2] |= channel_spacing_;
-  registers_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
-  registers_[SYSCONFIG2] |= 0x0001;  // Set volume to lowest.
+    shadow_reg_[SYSCONFIG1] |= DE;
+  shadow_reg_[SYSCONFIG2] |= band_;
+  shadow_reg_[SYSCONFIG2] |= channel_spacing_;
+  shadow_reg_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
+  shadow_reg_[SYSCONFIG2] |= 0x0001;  // Set volume to lowest.
   updateRegisters();
 
   delay(MAX_POWERUP_TIME);
@@ -126,7 +126,7 @@ int Si4703_Breakout::powerOn() {
 
 void Si4703_Breakout::powerOff() {
   readRegisters();
-  registers_[POWERCFG] = 0x0000;  // Clear Enable Bit disables chip.
+  shadow_reg_[POWERCFG] = 0x0000;  // Clear Enable Bit disables chip.
   updateRegisters();
 }
 
@@ -140,9 +140,9 @@ void Si4703_Breakout::setFrequency(float frequency) {
     return;
   }
   readRegisters();
-  registers_[CHANNEL] &= 0xFE00;   // Clear out the channel bits.
-  registers_[CHANNEL] |= channel;  // Mask in the new channel.
-  registers_[CHANNEL] |= TUNE;     // Set the TUNE bit to start.
+  shadow_reg_[CHANNEL] &= 0xFE00;   // Clear out the channel bits.
+  shadow_reg_[CHANNEL] |= channel;  // Mask in the new channel.
+  shadow_reg_[CHANNEL] |= TUNE;     // Set the TUNE bit to start.
   updateRegisters();
 
   delay(60);  // Wait 60ms - you can use or skip this delay.
@@ -150,18 +150,18 @@ void Si4703_Breakout::setFrequency(float frequency) {
   // Poll to see if STC is set.
   while (true) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & STC) != 0)
+    if ((shadow_reg_[STATUSRSSI] & STC) != 0)
       break;  // Tuning complete!
   }
 
   readRegisters();
-  registers_[CHANNEL] &= ~TUNE;  // Clear the tune after a tune has completed.
+  shadow_reg_[CHANNEL] &= ~TUNE;  // Clear the tune after a tune has completed.
   updateRegisters();
 
   // Wait for the si4703 to clear the STC as well.
   while (true) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & STC) == 0)
+    if ((shadow_reg_[STATUSRSSI] & STC) == 0)
       break;  // Tuning complete!
   }
 }
@@ -180,9 +180,9 @@ void Si4703_Breakout::setVolume(int volume) {
     volume = 0;
   if (volume > 15)
     volume = 15;
-  registers_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
-  registers_[SYSCONFIG2] |= volume;  // Set new volume.
-  updateRegisters();                 // Update.
+  shadow_reg_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
+  shadow_reg_[SYSCONFIG2] |= volume;  // Set new volume.
+  updateRegisters();
 }
 
 void Si4703_Breakout::readRDS(char* buffer, long timeout) {
@@ -194,16 +194,16 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout) {
   while (completedCount < 4 && millis() < endTime) {
     readRegisters();
 
-    if (registers_[STATUSRSSI] & RDSR) {
+    if (shadow_reg_[STATUSRSSI] & RDSR) {
       // lowest order two bits of B are the word pair index.
-      uint16_t b = registers_[RDSB];
+      uint16_t b = shadow_reg_[RDSB];
       int index = b & 0x03;
 
       if (!completed[index] && b < 500) {
         completed[index] = true;
         completedCount++;
-        char Dh = (registers_[RDSD] & 0xFF00) >> 8;
-        char Dl = (registers_[RDSD] & 0x00FF);
+        char Dh = (shadow_reg_[RDSD] & 0xFF00) >> 8;
+        char Dl = (shadow_reg_[RDSD] & 0x00FF);
         buffer[index * 2] = Dh;
         buffer[index * 2 + 1] = Dl;
       }
@@ -242,7 +242,7 @@ uint8_t Si4703_Breakout::readRegisters() {
   for (int x = 0x0A;; x++) {
     if (x == 0x10)
       x = 0;  // Loop back to zero.
-    registers_[x] = ToLittleEndian(buffer[i++]);
+    shadow_reg_[x] = ToLittleEndian(buffer[i++]);
     if (x == 0x09)
       break;  // We're done!
   }
@@ -263,7 +263,7 @@ uint8_t Si4703_Breakout::updateRegisters() {
   // lower byte and so on.
   // In general, we should not write to registers 0x08 and 0x09.
   for (int regSpot = 0x02; regSpot < 0x08; regSpot++)
-    buffer[i++] = ToBigEndian(registers_[regSpot]);
+    buffer[i++] = ToBigEndian(shadow_reg_[regSpot]);
 
   if (write(si4703_fd_, buffer, 12) < 12) {
     perror("Could not write to I2C slave device");
@@ -279,7 +279,7 @@ void Si4703_Breakout::printRegisters() {
   printf("Registers\tValues\n");
 
   for (i = 0; i < 16; i++) {
-    printf("0x%02X:\t%04X\n", i, registers_[i]);
+    printf("0x%02X:\t%04X\n", i, shadow_reg_[i]);
   }
 }
 
@@ -289,37 +289,35 @@ void Si4703_Breakout::printRegisters() {
 float Si4703_Breakout::seek(SeekDirection direction) {
   readRegisters();
   // Set seek mode wrap bit.
-  registers_[POWERCFG] |= SKMODE;  // Allow wrap.
-  // registers_[POWERCFG] &= ~SKMODE; // Disallow wrap - if you
+  shadow_reg_[POWERCFG] |= SKMODE;  // Allow wrap.
+  // shadow_reg_[POWERCFG] &= ~SKMODE; // Disallow wrap - if you
   // disallow wrap, you may want to tune to 87.5 first.
-  if (direction == SeekDirection::Down) {
-    // Seek down is the default upon reset.
-    registers_[POWERCFG] &= ~SEEKUP;
-  } else {
-    registers_[POWERCFG] |= SEEKUP;  // Set the bit to seek up.
-  }
+  if (direction == SeekDirection::Down)
+    shadow_reg_[POWERCFG] &= ~SEEKUP;  // The default upon reset.
+  else
+    shadow_reg_[POWERCFG] |= SEEKUP;
 
-  registers_[POWERCFG] |= SEEK;  // Start seek.
-  updateRegisters();             // Seeking will now start.
+  shadow_reg_[POWERCFG] |= SEEK;  // Start seek.
+  updateRegisters();              // Seeking will now start.
 
   // Poll to see if STC is set.
   while (true) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & STC) != 0)
+    if ((shadow_reg_[STATUSRSSI] & STC) != 0)
       break;  // Tuning complete!
   }
 
   readRegisters();
   // Store the value of SFBL.
-  int valueSFBL = registers_[STATUSRSSI] & SFBL;
+  int valueSFBL = shadow_reg_[STATUSRSSI] & SFBL;
   // Clear the seek bit after seek has completed.
-  registers_[POWERCFG] &= ~SEEK;
+  shadow_reg_[POWERCFG] &= ~SEEK;
   updateRegisters();
 
   // Wait for the si4703 to clear the STC as well.
   while (true) {
     readRegisters();
-    if ((registers_[STATUSRSSI] & STC) == 0)
+    if ((shadow_reg_[STATUSRSSI] & STC) == 0)
       break;  // Tuning complete!
   }
 
@@ -372,6 +370,6 @@ uint16_t Si4703_Breakout::frequencyToChannel(float frequency) const {
 float Si4703_Breakout::getFrequency() {
   readRegisters();
   // Mask out everything but the lower 10 bits.
-  const int channel = registers_[READCHAN] & 0x03FF;
+  const int channel = shadow_reg_[READCHAN] & 0x03FF;
   return channelToFrequency(channel);
 }
