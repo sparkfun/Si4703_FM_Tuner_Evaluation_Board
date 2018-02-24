@@ -64,20 +64,43 @@ enum class Region { US, Europe, Japan };
 class Si4703_Breakout {
  public:
   Si4703_Breakout(int resetPin, int sdioPin, Region region = Region::US);
-  int powerOn();  // call in setup.
+
+  // Power on the radio.
+  // Returns SUCCESS or FAIL.
+  int powerOn();
+
+  // Power off the radio.
   void powerOff();
-  void setFrequency(float freqency);  // Frequency in MHz, i.e. 93.5.
-  float seekUp();                     // returns the tuned frequency or 0.
+
+  // Tune the radio to the specified |frequency| in MHz (i.e. 93.5).
+  void setFrequency(float freqency);
+
+  // Seek up to the next detected station.
+  // Returns the new station frequency, or 0 if seek failed.
+  float seekUp();
+
+  // Seek down to the next detected station.
+  // Returns the new station frequency, or 0 if seek failed.
   float seekDown();
-  void setVolume(int volume);  // 0 to 15.
-  // |message| must be at least 9 chars. result will be null terminated.
+
+  // Set the radio volume (0..15).
+  void setVolume(int volume);
+
+  // Read the current RDS characters into the |message| buffer.
+  // |message| must be at least 9 chars. |message| will be null terminated.
   // |timeout| in milliseconds.
   void readRDS(char* message, long timeout);
+
+  // Return the currently tuned frequency.
   float getFrequency();
+
+  // Print the shadow register values to stdout. Does not refresh the shadow
+  // registers before printing.
   void printRegisters();
 
  private:
   enum class SeekDirection { Up, Down };
+
   // See AN230 Programmers Guide section 3.4.1 for bands. Band is bits 6:7 in
   // SYSCONFIG2 register.
   enum Band : uint16_t {
