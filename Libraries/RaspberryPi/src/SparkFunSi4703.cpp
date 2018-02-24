@@ -50,12 +50,16 @@ Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, Region region)
   switch (region) {
     case Region::US:
       band_ = Band_US_Europe;
+      channel_spacing_ = Spacing_200kHz;
       break;
     case Region::Europe:
       band_ = Band_US_Europe;
+      channel_spacing_ = Spacing_100kHz;
       break;
     case Region::Japan:
       band_ = Band_Japan_Wide;
+      // TODO: verify spacing.
+      channel_spacing_ = Spacing_100kHz;
       break;
   }
 }
@@ -107,13 +111,10 @@ int Si4703_Breakout::powerOn() {
   registers_[POWERCFG] = 0x4001;  // Enable the IC.
 
   registers_[SYSCONFIG1] |= RDS;  // Enable RDS.
-  if (region_ == Region::Europe) {
+  if (region_ == Region::Europe)
     registers_[SYSCONFIG1] |= DE;
-
-    // 100kHz channel spacing for Europe.
-    registers_[SYSCONFIG2] |= SPACE0;
-  }
   registers_[SYSCONFIG2] |= band_;
+  registers_[SYSCONFIG2] |= channel_spacing_;
   registers_[SYSCONFIG2] &= 0xFFF0;  // Clear volume bits.
   registers_[SYSCONFIG2] |= 0x0001;  // Set volume to lowest.
   updateRegisters();
@@ -332,11 +333,13 @@ float Si4703_Breakout::seek(SeekDirection direction) {
 
 // Return the space between channels (in MHz).
 float Si4703_Breakout::channelSpacing() const {
-  switch (region_) {
-    case Region::US:
-      return 0.2f;
-    case Region::Europe:
-      return 0.1f;
+  switch (channel_spacing_) {
+    case Spacing_200kHz:
+      return 0.2;
+    case Spacing_100kHz:
+      return 0.1;
+    case Spacing_50kHz:
+      return 0.05;
   }
 }
 

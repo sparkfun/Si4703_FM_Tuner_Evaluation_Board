@@ -87,6 +87,15 @@ class Si4703_Breakout {
     Band_Reserved = 0b1100000
   };
 
+  // See AN230 Programmers Guide section 3.4.2 for channel spacing. Spacing is
+  // bits 4:5 in SYSCONFIG2 register.
+  enum ChannelSpacing : uint16_t {
+    Spacing_200kHz = 0b00000,
+    Spacing_100kHz = 0b01000,
+    Spacing_50kHz = 0b10000,
+    Spacing_Reserved = 0b11000,
+  };
+
   static const uint16_t FAIL = 0;
   static const uint16_t SUCCESS = 1;
 
@@ -124,10 +133,6 @@ class Si4703_Breakout {
   static const uint16_t RDS = 1 << 12;
   static const uint16_t DE = 1 << 11;
 
-  // Register 0x05 - SYSCONFIG2
-  static const uint16_t SPACE1 = 1 << 5;
-  static const uint16_t SPACE0 = 1 << 4;
-
   // Register 0x0A - STATUSRSSI
   static const uint16_t RDSR = 1 << 15;
   static const uint16_t STC = 1 << 14;
@@ -150,6 +155,7 @@ class Si4703_Breakout {
   int si4703_fd_;           // I2C file descriptor.
   Region region_;
   Band band_;
+  ChannelSpacing channel_spacing_;
 };
 
 #endif
