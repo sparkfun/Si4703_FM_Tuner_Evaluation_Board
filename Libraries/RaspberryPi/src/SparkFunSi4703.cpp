@@ -7,14 +7,17 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
+#include <thread>
 
-#include <unistd.h>
 #include <fcntl.h>
-#include <wiringPi.h>
 #include <linux/i2c-dev.h>
+#include <string.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
+#include <wiringPi.h>
 
 #include "SparkFunSi4703.h"
 
@@ -60,7 +63,11 @@ char ToYesNo(uint16_t val) {
 }  // anonymous namespace
 
 Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, Region region)
-    : resetPin_(resetPin), sdioPin_(sdioPin), region_(region) {
+    : resetPin_(resetPin),
+      sdioPin_(sdioPin),
+      region_(region),
+      run_rds_thread_(false) {
+  clearRDSBuffer();
   switch (region) {
     case Region::US:
       band_ = Band_US_Europe;
@@ -76,6 +83,10 @@ Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, Region region)
       channel_spacing_ = Spacing_100kHz;
       break;
   }
+}
+
+Si4703_Breakout::~Si4703_Breakout() {
+  powerOff();
 }
 
 // To get the Si4703 inito 2-wire mode, SEN needs to be high and SDIO needs to
@@ -137,10 +148,15 @@ Status Si4703_Breakout::powerOn() {
 
   delay(MAX_POWERUP_TIME);
 
+  // Start the RDS reading thread.
+  run_rds_thread_ = true;
+  rds_thread_.reset(new std::thread(&Si4703_Breakout::rdsReadFunc, this));
+
   return Status::SUCCESS;
 }
 
 void Si4703_Breakout::powerOff() {
+  stopRDSThread();
   readRegisters();
   shadow_reg_[POWERCFG] = 0x0000;  // Clear Enable Bit disables chip.
   updateRegisters();
@@ -157,6 +173,7 @@ void Si4703_Breakout::setFrequency(float frequency) {
          << endl;
     return;
   }
+  clearRDSBuffer();
   readRegisters();
   shadow_reg_[CHANNEL] &= 0xFE00;   // Clear out the channel bits.
   shadow_reg_[CHANNEL] |= channel;  // Mask in the new channel.
@@ -195,41 +212,67 @@ void Si4703_Breakout::setVolume(int volume) {
   updateRegisters();
 }
 
-void Si4703_Breakout::readRDS(char* buffer, long timeout) {
-  long endTime = millis() + timeout;
-  bool completed[] = {false, false, false, false};
-  int completedCount = 0;
+void Si4703_Breakout::getRDS(char* buffer) {
+  std::lock_guard<std::mutex> lock(rds_data_mutex_);
+  strcpy(buffer, rds_chars_);
+}
 
-  // Read until we get four pairs of letters, or until there is a timeout.
-  while (completedCount < 4 && millis() < endTime) {
+// This is the thread function that reads the RDS data and writes it to an
+// instance character buffer.
+void Si4703_Breakout::rdsReadFunc() {
+  while (run_rds_thread_) {
     readRegisters();
-
-    if (shadow_reg_[STATUSRSSI] & RDSR) {
-      // lowest order two bits of B are the word pair index.
-      uint16_t b = shadow_reg_[RDSB];
-      int index = b & 0x03;
-
-      if (!completed[index] && b < 500) {
-        completed[index] = true;
-        completedCount++;
-        char Dh = (shadow_reg_[RDSD] & 0xFF00) >> 8;
-        char Dl = (shadow_reg_[RDSD] & 0x00FF);
-        buffer[index * 2] = Dh;
-        buffer[index * 2 + 1] = Dl;
-      }
-      delay(40);  // Wait for the RDS bit to clear.
-    } else {
-      delay(30);  // From AN230, using the polling method 40ms should be
-                  // sufficient amount of time between checks.
+    if (!(shadow_reg_[STATUSRSSI] & RDSR)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(30));
+      continue;
     }
-  }
 
-  if (millis() >= endTime) {
-    buffer[0] = '\0';
+    // lowest order two bits of B are the word pair index.
+    uint16_t b = shadow_reg_[RDSB];
+    int index = b & 0b11;
+
+    auto now = std::chrono::system_clock::now();
+    if (b < 500) {
+      char Dh = (shadow_reg_[RDSD] & 0xFF00) >> 8;
+      char Dl = (shadow_reg_[RDSD] & 0x00FF);
+      {
+        std::lock_guard<std::mutex> lock(rds_data_mutex_);
+        rds_chars_[index * 2] = Dh;
+        rds_chars_[index * 2 + 1] = Dl;
+        rds_last_valid_[index] = now;
+      }
+    } else {
+      // If we haven't received RDS data for this character tuple in 500msec
+      // then clear that tuple.
+      if (now - rds_last_valid_[index] > std::chrono::milliseconds(500)) {
+        rds_chars_[index * 2] = rds_chars_[index * 2 + 1] = ' ';
+      }
+    }
+
+    // Notify any listener that we have RDS data.
+    rds_cv_.notify_all();
+
+    // Wait for the RDS bit to clear.
+    std::this_thread::sleep_for(std::chrono::milliseconds(40));
+  }
+}
+
+void Si4703_Breakout::clearRDSBuffer() {
+  std::lock_guard<std::mutex> lock(rds_data_mutex_);
+  strcpy(rds_chars_, "        ");
+  for (int i = 0; i < 4; i++)
+    rds_last_valid_[i] =
+        std::chrono::time_point<std::chrono::system_clock>::min();
+}
+
+void Si4703_Breakout::stopRDSThread() {
+  if (!rds_thread_)
     return;
-  }
-
-  buffer[8] = '\0';
+  run_rds_thread_ = false;
+  rds_cv_.notify_all();
+  rds_thread_->join();
+  rds_thread_.reset();
+  clearRDSBuffer();
 }
 
 // Read the entire register control set from 0x00 to 0x0F.
@@ -248,6 +291,8 @@ Status Si4703_Breakout::readRegisters() {
 
   // Remember, register 0x0A comes in first so we have to shuffle the array
   // around a bit.
+  std::lock_guard<std::mutex> lock(shadow_reg_mutex_);
+
   int i = 0;
   for (int x = 0x0A;; x++) {
     if (x == 0x10)
@@ -267,13 +312,16 @@ Status Si4703_Breakout::updateRegisters() {
   int i = 0;
   uint16_t buffer[6];
 
-  // A write command automatically begins with register 0x02 so no need to send
-  // a write-to address.
-  // First we send the 0x02 to 0x07 control registers, first upper byte, then
-  // lower byte and so on.
-  // In general, we should not write to registers 0x08 and 0x09.
-  for (int regSpot = 0x02; regSpot < 0x08; regSpot++)
-    buffer[i++] = ToBigEndian(shadow_reg_[regSpot]);
+  {
+    std::lock_guard<std::mutex> lock(shadow_reg_mutex_);
+
+    // A write command automatically begins with register 0x02 so no need to
+    // send a write-to address. First we send the 0x02 to 0x07 control
+    // registers, first upper byte, then lower byte and so on. In general, we
+    // should not write to registers 0x08 and 0x09.
+    for (int regSpot = 0x02; regSpot < 0x08; regSpot++)
+      buffer[i++] = ToBigEndian(shadow_reg_[regSpot]);
+  }
 
   if (write(si4703_fd_, buffer, 12) < 12) {
     perror("Could not write to I2C slave device");

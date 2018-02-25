@@ -57,7 +57,13 @@ cables. Too short of a cable may degrade reception.
 #ifndef SparkFunSi4703_h
 #define SparkFunSi4703_h
 
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 
 #include <inttypes.h>
 
@@ -70,6 +76,7 @@ enum class SeekDirection { Up, Down };
 class Si4703_Breakout {
  public:
   Si4703_Breakout(int resetPin, int sdioPin, Region region = Region::US);
+  ~Si4703_Breakout();
 
   // Power on the radio.
   Status powerOn();
@@ -89,8 +96,13 @@ class Si4703_Breakout {
 
   // Read the current RDS characters into the |message| buffer.
   // |message| must be at least 9 chars. |message| will be null terminated.
-  // |timeout| in milliseconds.
-  void readRDS(char* message, long timeout);
+  // This method is thread safe.
+  void getRDS(char* message);
+
+  // The condition variable to use to be signalled by the RDS thread that there
+  // is new RDS data in the buffer. When signalled call getRDS() to retrieve the
+  // characters.
+  std::condition_variable& rdsCV() { return rds_cv_; }
 
   // Return the currently tuned frequency.
   float getFrequency();
@@ -205,13 +217,24 @@ class Si4703_Breakout {
   Status updateRegisters();
   float channelToFrequency(uint16_t channel) const;
   uint16_t frequencyToChannel(float frequency) const;
+  void rdsReadFunc();
+  void stopRDSThread();
+  void clearRDSBuffer();
 
   int resetPin_;
   int sdioPin_;
-  uint16_t shadow_reg_[16];  // There are 16 registers, each 16 bits large.
-  int si4703_fd_;            // I2C file descriptor.
+  std::mutex shadow_reg_mutex_;  // Synchronize access to shadow_reg_.
+  uint16_t shadow_reg_[16];      // There are 16 registers, each 16 bits large.
+  int si4703_fd_;                // I2C file descriptor.
   Region region_;
   Band band_;
+  std::mutex rds_data_mutex_;  // protect both RDS variables below.
+  char rds_chars_[9];          // The current RDS characters.
+  // The last time a pair of chars was valid.
+  std::chrono::time_point<std::chrono::system_clock> rds_last_valid_[4];
+  std::unique_ptr<std::thread> rds_thread_;
+  std::condition_variable rds_cv_;
+  std::atomic<bool> run_rds_thread_;
   ChannelSpacing channel_spacing_;
 };
 

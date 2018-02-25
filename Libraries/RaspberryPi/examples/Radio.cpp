@@ -17,11 +17,32 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 #include "../src/SparkFunSi4703.h"
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 using std::cerr;
 using std::cout;
 using std::endl;
+
+void rdsPrintFunc(Si4703_Breakout* radio) {
+  const auto duration = std::chrono::seconds(15);
+  const auto end_time = std::chrono::system_clock::now() + duration;
+  cout << "RDS: " << std::flush;
+  char rds_buffer[9];
+  std::mutex mtx;
+  std::unique_lock<std::mutex> lck(mtx);
+  while (true) {
+    if (std::chrono::system_clock::now() > end_time)
+      return;
+    if (radio->rdsCV().wait_for(lck, std::chrono::milliseconds(1000)) ==
+        std::cv_status::timeout)
+      continue;
+    radio->getRDS(rds_buffer);
+    cout << "\33[2K\r";
+    cout << "RDS: " << rds_buffer << std::flush;
+  }
+}
 
 int main(int argc, const char** argv) {
   if (argc != 2) {
@@ -35,17 +56,14 @@ int main(int argc, const char** argv) {
   int resetPin = 23;  // GPIO_23.
   int sdaPin = 0;     // GPIO_0 (SDA).
 
-  int timeout_msec = 15000;
-
   Si4703_Breakout radio(resetPin, sdaPin);
   radio.powerOn();
   radio.setVolume(5);
   radio.setFrequency(frequency);
+  cout << "Listening to station " << radio.getFrequency() << " MHz" << endl;
 
-  char rdsBuffer[10] = {0};
-  radio.readRDS(rdsBuffer, timeout_msec);
-  cout << "Listening to station \"" << rdsBuffer << "\" "
-       << radio.getFrequency() << "MHz" << endl;
+  std::thread th(&rdsPrintFunc, &radio);
+  th.join();
 
   cout << endl;
   radio.printRegisters();

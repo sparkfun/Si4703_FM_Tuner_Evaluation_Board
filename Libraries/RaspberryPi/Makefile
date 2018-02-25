@@ -13,7 +13,7 @@ clean:
 
 .PHONY: run
 run: Radio
-	sudo ./Radio 88.5
+	sudo ./Radio 105.7
 
 all: Radio Scan
 

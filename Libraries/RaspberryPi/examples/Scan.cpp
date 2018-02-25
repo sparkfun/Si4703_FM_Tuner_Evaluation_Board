@@ -1,4 +1,5 @@
 #include "../src/SparkFunSi4703.h"
+#include <thread>
 #include <iostream>
 
 using std::cout;
@@ -20,9 +21,10 @@ int main(int argc, const char** argv) {
     float fFreq = iFreq / 1000.0;
     radio.setFrequency(fFreq);
 
+    // Sleep to get some RDS data
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     char rdsBuffer[10] = {0};
-    const int timeout_msec = 1000;
-    radio.readRDS(rdsBuffer, timeout_msec);
+    radio.getRDS(rdsBuffer);
     cout << fFreq << " MHz \"" << rdsBuffer
          << "\" RSSI:" << radio.signalStrength() << endl;
   }
