@@ -100,6 +100,32 @@ class Si4703_Breakout {
   // registers before printing.
   void printRegisters();
 
+  // Read the registers from the radio into the shadow registers.
+  uint8_t readRegisters();
+
+  // The channel spacing (in MHz) between channels.
+  float channelSpacing() const;
+
+  // The minimum (lowest) frequency possible with the current band.
+  float minFrequency() const;
+
+  // The portions of the DEVICEID/CHIPID registers shifted accordingly.
+  uint16_t manufacturer() const;
+  uint16_t part() const;
+  uint16_t firmware() const;
+  uint16_t device() const;
+  uint16_t revision() const;
+  int signalStrength() const;
+  uint16_t blockAErrors() const;
+
+  // The human-readable decoded DEVICEID/CHIPID register values.
+  std::string manufacturer_str() const;
+  std::string part_str() const;
+  std::string firmware_str() const;
+  std::string device_str() const;
+  std::string revision_str() const;
+  std::string blockAErrors_str() const;
+
  private:
   enum class SeekDirection { Up, Down };
 
@@ -182,30 +208,10 @@ class Si4703_Breakout {
 
   static const char* registerName(uint16_t idx);
 
-  uint8_t readRegisters();
   uint8_t updateRegisters();
   float seek(SeekDirection direction);
-  float channelSpacing() const;
-  float minFrequency() const;
   float channelToFrequency(uint16_t channel) const;
   uint16_t frequencyToChannel(float frequency) const;
-
-  // The portions of the DEVICEID/CHIPID registers shifted accordingly.
-  uint16_t manufacturer() const;
-  uint16_t part() const;
-  uint16_t firmware() const;
-  uint16_t device() const;
-  uint16_t revision() const;
-  int signalStrength() const;
-  uint16_t blockAErrors() const;
-
-  // The human-readable decoded DEVICEID/CHIPID register values.
-  std::string manufacturer_str() const;
-  std::string part_str() const;
-  std::string firmware_str() const;
-  std::string device_str() const;
-  std::string revision_str() const;
-  std::string blockAErrors_str() const;
 
   int resetPin_;
   int sdioPin_;

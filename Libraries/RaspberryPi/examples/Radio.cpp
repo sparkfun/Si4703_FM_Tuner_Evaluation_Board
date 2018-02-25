@@ -19,20 +19,31 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "../src/SparkFunSi4703.h"
 #include <iostream>
 
+using std::cerr;
 using std::cout;
 using std::endl;
 
-int main() {
+int main(int argc, const char** argv) {
+  if (argc != 2) {
+    cerr << "usage:" << endl;
+    cerr << "  Radio <freq>" << endl;
+    cerr << "where:" << endl;
+    cerr << "  freq: frequency in MHz (e.g. 103.7)" << endl;
+    return 1;
+  }
+  float frequency = atof(argv[1]);
   int resetPin = 23;  // GPIO_23.
   int sdaPin = 0;     // GPIO_0 (SDA).
+
+  int timeout_msec = 15000;
 
   Si4703_Breakout radio(resetPin, sdaPin);
   radio.powerOn();
   radio.setVolume(5);
-  radio.setFrequency(88.5);
+  radio.setFrequency(frequency);
 
   char rdsBuffer[10] = {0};
-  radio.readRDS(rdsBuffer, 1000);  // timeout 15sec.
+  radio.readRDS(rdsBuffer, timeout_msec);
   cout << "Listening to station \"" << rdsBuffer << "\" "
        << radio.getFrequency() << "MHz" << endl;
 
