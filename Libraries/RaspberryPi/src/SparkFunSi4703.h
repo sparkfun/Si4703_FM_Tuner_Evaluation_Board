@@ -63,13 +63,14 @@ cables. Too short of a cable may degrade reception.
 
 enum class Region { US, Europe, Japan };
 
+enum class Status { SUCCESS, FAIL };
+
 class Si4703_Breakout {
  public:
   Si4703_Breakout(int resetPin, int sdioPin, Region region = Region::US);
 
   // Power on the radio.
-  // Returns SUCCESS or FAIL.
-  int powerOn();
+  Status powerOn();
 
   // Power off the radio.
   void powerOff();
@@ -101,7 +102,7 @@ class Si4703_Breakout {
   void printRegisters();
 
   // Read the registers from the radio into the shadow registers.
-  uint8_t readRegisters();
+  Status readRegisters();
 
   // The channel spacing (in MHz) between channels.
   float channelSpacing() const;
@@ -146,9 +147,6 @@ class Si4703_Breakout {
     Spacing_50kHz = 0b10000,
     Spacing_Reserved = 0b11000,
   };
-
-  static const uint16_t FAIL = 0;
-  static const uint16_t SUCCESS = 1;
 
   // 0b._001.0000 = I2C address of Si4703 - note that the Wire
   // function assumes non-left-shifted I2C address, not 0b.0010.000W
@@ -208,7 +206,7 @@ class Si4703_Breakout {
 
   static const char* registerName(uint16_t idx);
 
-  uint8_t updateRegisters();
+  Status updateRegisters();
   float seek(SeekDirection direction);
   float channelToFrequency(uint16_t channel) const;
   uint16_t frequencyToChannel(float frequency) const;

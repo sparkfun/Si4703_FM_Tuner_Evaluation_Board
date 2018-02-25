@@ -82,7 +82,7 @@ Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, Region region)
 // be low after a reset. The breakout board has SEN pulled high, but also has
 // SDIO pulled high. Therefore, after a normal power up the Si4703 will be in an
 // unknown state. RST must be controlled
-int Si4703_Breakout::powerOn() {
+Status Si4703_Breakout::powerOn() {
   wiringPiSetupGpio();  // Setup gpio access in BCM mode.
 
   pinMode(resetPin_, OUTPUT);  // gpio bit-banging to get 2-wire (I2C) mode.
@@ -100,20 +100,22 @@ int Si4703_Breakout::powerOn() {
   const char filename[] = "/dev/i2c-1";
   if ((si4703_fd_ = open(filename, O_RDWR)) < 0) {  // Open I2C slave device.
     perror(filename);
-    return FAIL;
+    return Status::FAIL;
   }
 
   if (ioctl(si4703_fd_, I2C_SLAVE, SI4703) < 0) {  // Set device address 0x10.
     perror("Failed to acquire bus access and/or talk to slave");
-    return FAIL;
+    return Status::FAIL;
   }
 
   if (ioctl(si4703_fd_, I2C_PEC, 1) < 0) {  // Enable "Packet Error Checking".
     perror("Failed to enable PEC");
-    return FAIL;
+    return Status::FAIL;
   }
 
-  readRegisters();
+  Status s = readRegisters();
+  if (s != Status::SUCCESS)
+    return s;
 
   // Enable the oscillator, from AN230 page 9, rev 0.61 (works).
   shadow_reg_[0x07] = 0x8100;
@@ -135,7 +137,7 @@ int Si4703_Breakout::powerOn() {
 
   delay(MAX_POWERUP_TIME);
 
-  return SUCCESS;
+  return Status::SUCCESS;
 }
 
 void Si4703_Breakout::powerOff() {
@@ -239,7 +241,7 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout) {
 }
 
 // Read the entire register control set from 0x00 to 0x0F.
-uint8_t Si4703_Breakout::readRegisters() {
+Status Si4703_Breakout::readRegisters() {
   uint16_t buffer[16];
 
   // Si4703 begins reading from upper byte of register 0x0A and reads to 0x0F,
@@ -247,7 +249,7 @@ uint8_t Si4703_Breakout::readRegisters() {
   // We want to read the entire register set from 0x0A to 0x09 = 32 bytes.
   if (read(si4703_fd_, buffer, 32) != 32) {
     perror("Could not read from I2C slave device");
-    return FAIL;
+    return Status::FAIL;
   }
 
   // We may want some time-out error here.
@@ -263,13 +265,13 @@ uint8_t Si4703_Breakout::readRegisters() {
       break;  // We're done!
   }
 
-  return SUCCESS;
+  return Status::SUCCESS;
 }
 
 // Write the current 9 control registers (0x02 to 0x07) to the Si4703.
 // It's a little weird, you don't write an I2C address.
 // The Si4703 assumes you are writing to 0x02 first, then increments.
-uint8_t Si4703_Breakout::updateRegisters() {
+Status Si4703_Breakout::updateRegisters() {
   int i = 0;
   uint16_t buffer[6];
 
@@ -283,10 +285,10 @@ uint8_t Si4703_Breakout::updateRegisters() {
 
   if (write(si4703_fd_, buffer, 12) < 12) {
     perror("Could not write to I2C slave device");
-    return FAIL;
+    return Status::FAIL;
   }
 
-  return SUCCESS;
+  return Status::SUCCESS;
 }
 
 uint16_t Si4703_Breakout::manufacturer() const {
@@ -510,7 +512,7 @@ float Si4703_Breakout::seek(SeekDirection direction) {
 
   if (valueSFBL) {  // The bit was set indicating we hit a band limit or failed
                     // to find a station.
-    return FAIL;
+    return 0.0f;
   }
 
   return getFrequency();
