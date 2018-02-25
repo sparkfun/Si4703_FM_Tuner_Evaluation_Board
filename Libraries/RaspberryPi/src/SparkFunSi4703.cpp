@@ -184,14 +184,6 @@ void Si4703_Breakout::setFrequency(float frequency) {
   }
 }
 
-float Si4703_Breakout::seekUp() {
-  return seek(SeekDirection::Up);
-}
-
-float Si4703_Breakout::seekDown() {
-  return seek(SeekDirection::Down);
-}
-
 void Si4703_Breakout::setVolume(int volume) {
   readRegisters();
   if (volume < 0)

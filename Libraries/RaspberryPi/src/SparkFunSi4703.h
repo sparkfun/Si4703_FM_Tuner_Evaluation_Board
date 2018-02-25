@@ -65,6 +65,8 @@ enum class Region { US, Europe, Japan };
 
 enum class Status { SUCCESS, FAIL };
 
+enum class SeekDirection { Up, Down };
+
 class Si4703_Breakout {
  public:
   Si4703_Breakout(int resetPin, int sdioPin, Region region = Region::US);
@@ -78,13 +80,9 @@ class Si4703_Breakout {
   // Tune the radio to the specified |frequency| in MHz (i.e. 93.5).
   void setFrequency(float freqency);
 
-  // Seek up to the next detected station.
-  // Returns the new station frequency, or 0 if seek failed.
-  float seekUp();
-
-  // Seek down to the next detected station.
-  // Returns the new station frequency, or 0 if seek failed.
-  float seekDown();
+  // Seek the radio in the specified |direction|. Returns the new station
+  // frequency or 0 of seek failed.
+  float seek(SeekDirection direction);
 
   // Set the radio volume (0..15).
   void setVolume(int volume);
@@ -128,8 +126,6 @@ class Si4703_Breakout {
   std::string blockAErrors_str() const;
 
  private:
-  enum class SeekDirection { Up, Down };
-
   // See AN230 Programmers Guide section 3.4.1 for bands. Band is bits 6:7 in
   // SYSCONFIG2 register.
   enum Band : uint16_t {
@@ -207,7 +203,6 @@ class Si4703_Breakout {
   static const char* registerName(uint16_t idx);
 
   Status updateRegisters();
-  float seek(SeekDirection direction);
   float channelToFrequency(uint16_t channel) const;
   uint16_t frequencyToChannel(float frequency) const;
 
