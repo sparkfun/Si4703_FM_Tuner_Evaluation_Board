@@ -139,7 +139,9 @@ void loop() {
     Serial.println("4) Seek up");
     Serial.println("5) Seek down");
     Serial.println("6) Poll for RDS");
+    Serial.println("7) Display RDS radio text");
     Serial.println("r) Print registers");
+    Serial.println("n) Print station name from RDS");
     Serial.println("8) Turn GPIO1 High");
     Serial.println("9) Turn GPIO1 Low");
     Serial.println("v) Volume");
@@ -246,6 +248,41 @@ void loop() {
         //delay(500);
       }
     }
+    else if(option == '7') {
+      Serial.println("Poll RDS - x to exit");
+
+      char radioTextData[64];
+      char* pointerToRadioTextData = radioTextData;
+
+      memset(radioTextData, ' ', sizeof(radioTextData));
+
+      while (1) {
+        if (Serial.available() > 0)
+          if (Serial.read() == 'x') break;
+
+        si4703_readRegisters();
+        if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
+          if (isValidRdsData())
+          {
+            if (isRadioTextData())
+            {
+              // set each element of the radio text data as we get it
+              setRadioTextData(pointerToRadioTextData);
+
+              // now write the radio text to serial
+              for (short i = 0; i < sizeof(radioTextData); i++) {
+                Serial.print(radioTextData[i]);
+              }
+              Serial.println(" ");
+            }
+          }
+          delay(40); //Wait for the RDS bit to clear
+        }
+        else {
+          delay(40); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
+        }
+      }
+    }
     else if(option == '8') {
       Serial.println("GPIO1 High");
       si4703_registers[SYSCONFIG1] |= (1<<1) | (1<<0);
@@ -259,6 +296,40 @@ void loop() {
     else if(option == 'r') {
       Serial.println("Print registers");
       si4703_printRegisters();
+    }
+    else if(option == 'n') {
+      Serial.println("Print station name - x to exit");
+      char stationName[8];
+      char* pointerToStationNameData = stationName;
+
+      memset(stationName, ' ', sizeof(stationName));
+
+      while (1) {
+        if (Serial.available() > 0)
+          if (Serial.read() == 'x') break;
+
+        si4703_readRegisters();
+        if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
+          if (isValidStationNameData())
+          {
+            if (isStationNameData())
+            {
+              // set each element of the radio station name as we get it
+              setStationNameData(pointerToStationNameData);
+
+              // now write the radio text to serial
+              for (short i = 0; i < sizeof(stationName); i++) {
+                Serial.print(stationName[i]);
+              }
+              Serial.println(" ");
+            }
+          }
+          delay(40); //Wait for the RDS bit to clear
+        }
+        else {
+          delay(40); //From AN230, using the polling method 40ms should be sufficient amount of time between checks
+        }
+      }
     }
     else if(option == 't') {
       Serial.println("Trim pot tuning");
@@ -558,15 +629,79 @@ void si4703_printRegisters(void) {
   }
 }
 
+boolean isValidAsciiBasicCharacterSet(byte rdsData)
+{
+  return rdsData >= 32 && rdsData <= 127;
+}
 
+boolean isValidRdsData() {
 
+  byte blockErrors = (byte)((si4703_registers[STATUSRSSI] & 0x0600) >> 9); //Mask in BLERA;
 
+  byte Ch = (si4703_registers[RDSC] & 0xFF00) >> 8;
+  byte Cl = (si4703_registers[RDSC] & 0x00FF);
 
+  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[RDSD] & 0x00FF);
 
+  return blockErrors == 0 && isValidAsciiBasicCharacterSet(Dh) && isValidAsciiBasicCharacterSet(Dl) && isValidAsciiBasicCharacterSet(Ch) && isValidAsciiBasicCharacterSet(Cl);
+}
 
+boolean isValidStationNameData() {
 
+  byte blockErrors = (byte)((si4703_registers[STATUSRSSI] & 0x0600) >> 9); //Mask in BLERA;
 
+  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[RDSD] & 0x00FF);
 
+  return blockErrors == 0 && isValidAsciiBasicCharacterSet(Dh) && isValidAsciiBasicCharacterSet(Dl);
+}
 
+boolean isRadioTextData(void) {
+  return (si4703_registers[RDSB] >> 11) == 4 || (si4703_registers[RDSB] >> 11) == 5;
+}
 
+boolean isStationNameData(void) {
+  return (si4703_registers[RDSB] >> 11) == 0 || (si4703_registers[RDSB] >> 11) == 1;
+}
 
+void setRadioTextData(char* pointerToRadioTextData)
+{
+  // retrieve where this data sits in the RDS message
+  byte positionOfData = (si4703_registers[RDSB] & 0x00FF & 0xf);
+  byte characterPosition;
+
+  byte Ch = (si4703_registers[RDSC] & 0xFF00) >> 8;
+  byte Cl = (si4703_registers[RDSC] & 0x00FF);
+
+  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[RDSD] & 0x00FF);
+
+  characterPosition = positionOfData * 4;
+  pointerToRadioTextData[characterPosition] = (char)Ch;
+
+  characterPosition = positionOfData * 4 + 1;
+  pointerToRadioTextData[characterPosition] = (char)Cl;
+
+  characterPosition = positionOfData * 4 + 2;
+  pointerToRadioTextData[characterPosition] = (char)Dh;
+
+  characterPosition = positionOfData * 4 + 3;
+  pointerToRadioTextData[characterPosition] = (char)Dl;
+}
+
+void setStationNameData(char* pointerToStationNameData)
+{
+  // retrieve where this data sits in the RDS message
+  byte positionOfData = (si4703_registers[RDSB] & 0x00FF & 0x3);
+  byte characterPosition;
+
+  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[RDSD] & 0x00FF);
+
+  characterPosition = positionOfData * 2;
+  pointerToStationNameData[characterPosition] = (char)Dh;
+
+  characterPosition = positionOfData * 2 + 1;
+  pointerToStationNameData[characterPosition] = (char)Dl;
+}
