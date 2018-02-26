@@ -17,7 +17,7 @@ Repository Contents
 
 Documentation
 --------------
-* **[Library](https://github.com/sparkfun/SparkFun_Si4703_Arduino_Library)** - Arduino library for the Si4703.
+* **[Library](https://github.com/sparkfun/SparkFun_Si4703_Arduino_Library)** - Arduino and Raspberry Pi libraries for the Si4703.
 * **[Hookup Guide](https://learn.sparkfun.com/tutorials/si4703-fm-radio-receiver-hookup-guide)** - Basic hookup guide for the Si4703.
 * **[SparkFun Fritzing repo](https://github.com/sparkfun/Fritzing_Parts)** - Fritzing diagrams for SparkFun products.
 * **[SparkFun 3D Model repo](https://github.com/sparkfun/3D_Models)** - 3D models of SparkFun products. 
