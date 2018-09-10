@@ -156,9 +156,6 @@ void Si4703_Breakout::readRegisters(){
   //Si4703 begins reading from register upper register of 0x0A and reads to 0x0F, then loops to 0x00.
   Wire.requestFrom(SI4703, 32); //We want to read the entire register set from 0x0A to 0x09 = 32 bytes.
 
-  while(Wire.available() < 32) ; //Wait for 16 words/32 bytes to come back from slave I2C device
-  //We may want some time-out error here
-
   //Remember, register 0x0A comes in first so we have to shuffle the array around a bit
   for(int x = 0x0A ; ; x++) { //Read in these 32 bytes
     if(x == 0x10) x = 0; //Loop back to zero
