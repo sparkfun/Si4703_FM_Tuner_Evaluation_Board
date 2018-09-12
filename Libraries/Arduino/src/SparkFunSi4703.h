@@ -49,7 +49,7 @@ cables. Too short of a cable may degrade reception.
 class Si4703_Breakout
 {
   public:
-    Si4703_Breakout(int resetPin, int sdioPin, int sclkPin);
+    Si4703_Breakout(int resetPin, int sdioPin, int sclkPin, int sctIntPin);
     void powerOn();					// call in setup
 	void setChannel(int channel);  	// 3 digit channel number
 	int seekUp(); 					// returns the tuned channel or 0
@@ -63,6 +63,7 @@ class Si4703_Breakout
     int  _resetPin;
 	int  _sdioPin;
 	int  _sclkPin;
+	int  _stcIntPin;
 	void si4703_init();
 	void readRegisters();
 	byte updateRegisters();

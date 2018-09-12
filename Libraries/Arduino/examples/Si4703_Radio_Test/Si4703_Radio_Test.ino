@@ -4,8 +4,9 @@
 int resetPin = 2;
 int SDIO = A4;
 int SCLK = A5;
+int SCT = 3;
 
-Si4703_Breakout radio(resetPin, SDIO, SCLK);
+Si4703_Breakout radio(resetPin, SDIO, SCLK, SCT);
 int channel;
 int volume;
 char rdsBuffer[10];

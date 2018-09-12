@@ -2,11 +2,12 @@
 #include "SparkFunSi4703.h"
 #include "Wire.h"
 
-Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, int sclkPin)
+Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, int sclkPin, int stcIntPin)
 {
   _resetPin = resetPin;
   _sdioPin = sdioPin;
   _sclkPin = sclkPin;
+  _stcIntPin = stcIntPin;
 }
 
 void Si4703_Breakout::powerOn()
@@ -32,11 +33,7 @@ void Si4703_Breakout::setChannel(int channel)
 
   //delay(60); //Wait 60ms - you can use or skip this delay
 
-  //Poll to see if STC is set
-  while(1) {
-    readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) != 0) break; //Tuning complete!
-  }
+  while(_stcIntPin == 1) {} //Wait for STC (Seek/Tune Complete) interrupt
 
   readRegisters();
   si4703_registers[CHANNEL] &= ~(1<<TUNE); //Clear the tune after a tune has completed
@@ -120,8 +117,10 @@ void Si4703_Breakout::si4703_init()
 {
   pinMode(_resetPin, OUTPUT);
   pinMode(_sdioPin, OUTPUT); //SDIO is connected to A4 for I2C
+  pinMode(_stcIntPin, OUTPUT);
   digitalWrite(_sdioPin, LOW); //A low SDIO indicates a 2-wire interface
   digitalWrite(_resetPin, LOW); //Put Si4703 into reset
+  digitalWrite(_stcIntPin, HIGH); //STC (Seek/Tune Complete) goes low on interrupt
   delay(1); //Some delays while we allow pins to settle
   digitalWrite(_resetPin, HIGH); //Bring Si4703 out of reset with SDIO set to low and SEN pulled high with on-board resistor
   delay(1); //Allow Si4703 to come out of reset
@@ -131,6 +130,7 @@ void Si4703_Breakout::si4703_init()
   readRegisters(); //Read the current register set
   //si4703_registers[0x07] = 0xBC04; //Enable the oscillator, from AN230 page 9, rev 0.5 (DOES NOT WORK, wtf Silicon Labs datasheet?)
   si4703_registers[0x07] = 0x8100; //Enable the oscillator, from AN230 page 9, rev 0.61 (works)
+  si4703_registers[0x04] |= 0x2000; //Enable GPIO2 as SCT interrupt
   updateRegisters(); //Update
 
   delay(500); //Wait for clock to settle - from AN230 page 9
@@ -205,11 +205,7 @@ int Si4703_Breakout::seek(byte seekDirection){
   si4703_registers[POWERCFG] |= (1<<SEEK); //Start seek
   updateRegisters(); //Seeking will now start
 
-  //Poll to see if STC is set
-  while(1) {
-    readRegisters();
-    if((si4703_registers[STATUSRSSI] & (1<<STC)) != 0) break; //Tuning complete!
-  }
+  while(_stcIntPin == 1) {} //Wait for STC(Seek/Tune Complete) interrupt
 
   readRegisters();
   int valueSFBL = si4703_registers[STATUSRSSI] & (1<<SFBL); //Store the value of SFBL
