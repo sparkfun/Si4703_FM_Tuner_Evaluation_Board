@@ -64,38 +64,38 @@ uint16_t si4703_registers[16]; //There are 16 registers, each 16 bits large
 #define SEEK_UP  1
 
 //Define the register names
-#define DEVICEID 0x00
-#define CHIPID  0x01
-#define POWERCFG  0x02
-#define CHANNEL  0x03
-#define SYSCONFIG1  0x04
-#define SYSCONFIG2  0x05
-#define STATUSRSSI  0x0A
-#define READCHAN  0x0B
-#define RDSA  0x0C
-#define RDSB  0x0D
-#define RDSC  0x0E
-#define RDSD  0x0F
+#define REG_DEVICEID 0x00
+#define REG_CHIPID  0x01
+#define REG_POWERCFG  0x02
+#define REG_CHANNEL  0x03
+#define REG_SYSCONFIG1  0x04
+#define REG_SYSCONFIG2  0x05
+#define REG_STATUSRSSI  0x0A
+#define REG_READCHAN  0x0B
+#define REG_RDSA  0x0C
+#define REG_RDSB  0x0D
+#define REG_RDSC  0x0E
+#define REG_RDSD  0x0F
 
-//Register 0x02 - POWERCFG
+//Register 0x02 - REG_POWERCFG
 #define SMUTE  15
 #define DMUTE  14
 #define SKMODE  10
 #define SEEKUP  9
 #define SEEK  8
 
-//Register 0x03 - CHANNEL
+//Register 0x03 - REG_CHANNEL
 #define TUNE  15
 
-//Register 0x04 - SYSCONFIG1
+//Register 0x04 - REG_SYSCONFIG1
 #define RDS  12
 #define DE  11
 
-//Register 0x05 - SYSCONFIG2
+//Register 0x05 - REG_SYSCONFIG2
 #define SPACE1  5
 #define SPACE0  4
 
-//Register 0x0A - STATUSRSSI
+//Register 0x0A - REG_STATUSRSSI
 #define RDSR  15
 #define STC  14
 #define SFBL  13
@@ -161,7 +161,7 @@ void loop() {
     else if(option == '2') {
       Serial.println("Mute toggle");
       si4703_readRegisters();
-      si4703_registers[POWERCFG] ^= (1<<DMUTE); //Toggle Mute bit
+      si4703_registers[REG_POWERCFG] ^= (1<<DMUTE); //Toggle Mute bit
       si4703_updateRegisters();
     }
     else if(option == '3') {
@@ -170,10 +170,10 @@ void loop() {
       Serial.println();
       Serial.println("Radio Status:");
 
-      if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
+      if(si4703_registers[REG_STATUSRSSI] & (1<<RDSR)){
         Serial.print(" (RDS Available)");
 
-        byte blockerrors = (si4703_registers[STATUSRSSI] & 0x0600) >> 9; //Mask in BLERA
+        byte blockerrors = (si4703_registers[REG_STATUSRSSI] & 0x0600) >> 9; //Mask in BLERA
         if(blockerrors == 0) Serial.print (" (No RDS errors)");
         if(blockerrors == 1) Serial.print (" (1-2 RDS errors)");
         if(blockerrors == 2) Serial.print (" (3-5 RDS errors)");
@@ -182,20 +182,20 @@ void loop() {
       else
         Serial.print(" (No RDS)");
 
-      if(si4703_registers[STATUSRSSI] & (1<<STC)) Serial.print(" (Tune Complete)");
-      if(si4703_registers[STATUSRSSI] & (1<<SFBL)) 
+      if(si4703_registers[REG_STATUSRSSI] & (1<<STC)) Serial.print(" (Tune Complete)");
+      if(si4703_registers[REG_STATUSRSSI] & (1<<SFBL)) 
         Serial.print(" (Seek Fail)");
       else
         Serial.print(" (Seek Successful!)");
-      if(si4703_registers[STATUSRSSI] & (1<<AFCRL)) Serial.print(" (AFC/Invalid Channel)");
-      if(si4703_registers[STATUSRSSI] & (1<<RDSS)) Serial.print(" (RDS Synch)");
+      if(si4703_registers[REG_STATUSRSSI] & (1<<AFCRL)) Serial.print(" (AFC/Invalid Channel)");
+      if(si4703_registers[REG_STATUSRSSI] & (1<<RDSS)) Serial.print(" (RDS Synch)");
 
-      if(si4703_registers[STATUSRSSI] & (1<<STEREO)) 
+      if(si4703_registers[REG_STATUSRSSI] & (1<<STEREO)) 
         Serial.print(" (Stereo!)");
       else
         Serial.print(" (Mono)");
 
-      byte rssi = si4703_registers[STATUSRSSI] & 0x00FF; //Mask in RSSI
+      byte rssi = si4703_registers[REG_STATUSRSSI] & 0x00FF; //Mask in RSSI
       Serial.print(" (RSSI=");
       Serial.print(rssi, DEC);
       Serial.println(" of 75)");
@@ -213,20 +213,20 @@ void loop() {
           if(Serial.read() == 'x') break;
 
         si4703_readRegisters();
-        if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
+        if(si4703_registers[REG_STATUSRSSI] & (1<<RDSR)){
           Serial.println("We have RDS!");
           byte Ah, Al, Bh, Bl, Ch, Cl, Dh, Dl;
-          Ah = (si4703_registers[RDSA] & 0xFF00) >> 8;
-          Al = (si4703_registers[RDSA] & 0x00FF);
+          Ah = (si4703_registers[REG_RDSA] & 0xFF00) >> 8;
+          Al = (si4703_registers[REG_RDSA] & 0x00FF);
 
-          Bh = (si4703_registers[RDSB] & 0xFF00) >> 8;
-          Bl = (si4703_registers[RDSB] & 0x00FF);
+          Bh = (si4703_registers[REG_RDSB] & 0xFF00) >> 8;
+          Bl = (si4703_registers[REG_RDSB] & 0x00FF);
 
-          Ch = (si4703_registers[RDSC] & 0xFF00) >> 8;
-          Cl = (si4703_registers[RDSC] & 0x00FF);
+          Ch = (si4703_registers[REG_RDSC] & 0xFF00) >> 8;
+          Cl = (si4703_registers[REG_RDSC] & 0x00FF);
 
-          Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
-          Dl = (si4703_registers[RDSD] & 0x00FF);
+          Dh = (si4703_registers[REG_RDSD] & 0xFF00) >> 8;
+          Dl = (si4703_registers[REG_RDSD] & 0x00FF);
 
           Serial.print("RDS: ");
           Serial.print(Ah);
@@ -261,7 +261,7 @@ void loop() {
           if (Serial.read() == 'x') break;
 
         si4703_readRegisters();
-        if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
+        if(si4703_registers[REG_STATUSRSSI] & (1<<RDSR)){
           if (isValidRdsData())
           {
             if (isRadioTextData())
@@ -285,12 +285,12 @@ void loop() {
     }
     else if(option == '8') {
       Serial.println("GPIO1 High");
-      si4703_registers[SYSCONFIG1] |= (1<<1) | (1<<0);
+      si4703_registers[REG_SYSCONFIG1] |= (1<<1) | (1<<0);
       si4703_updateRegisters();
     }
     else if(option == '9') {
       Serial.println("GPIO1 Low");
-      si4703_registers[SYSCONFIG1] &= ~(1<<0);
+      si4703_registers[REG_SYSCONFIG1] &= ~(1<<0);
       si4703_updateRegisters();
     }
     else if(option == 'r') {
@@ -309,7 +309,7 @@ void loop() {
           if (Serial.read() == 'x') break;
 
         si4703_readRegisters();
-        if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
+        if(si4703_registers[REG_STATUSRSSI] & (1<<RDSR)){
           if (isValidStationNameData())
           {
             if (isStationNameData())
@@ -369,20 +369,20 @@ void loop() {
           option = Serial.read();
           if(option == '+') {
             si4703_readRegisters(); //Read the current register set
-            current_vol = si4703_registers[SYSCONFIG2] & 0x000F; //Read the current volume level
+            current_vol = si4703_registers[REG_SYSCONFIG2] & 0x000F; //Read the current volume level
             if(current_vol < 16) current_vol++; //Limit max volume to 0x000F
-            si4703_registers[SYSCONFIG2] &= 0xFFF0; //Clear volume bits
-            si4703_registers[SYSCONFIG2] |= current_vol; //Set new volume
+            si4703_registers[REG_SYSCONFIG2] &= 0xFFF0; //Clear volume bits
+            si4703_registers[REG_SYSCONFIG2] |= current_vol; //Set new volume
             si4703_updateRegisters(); //Update
             Serial.print("Volume: ");
             Serial.println(current_vol, DEC);
           }
           if(option == '-') {
             si4703_readRegisters(); //Read the current register set
-            current_vol = si4703_registers[SYSCONFIG2] & 0x000F; //Read the current volume level
+            current_vol = si4703_registers[REG_SYSCONFIG2] & 0x000F; //Read the current volume level
             if(current_vol > 0) current_vol--; //You can't go lower than zero
-            si4703_registers[SYSCONFIG2] &= 0xFFF0; //Clear volume bits
-            si4703_registers[SYSCONFIG2] |= current_vol; //Set new volume
+            si4703_registers[REG_SYSCONFIG2] &= 0xFFF0; //Clear volume bits
+            si4703_registers[REG_SYSCONFIG2] |= current_vol; //Set new volume
             si4703_updateRegisters(); //Update
             Serial.print("Volume: ");
             Serial.println(current_vol, DEC);
@@ -437,9 +437,9 @@ void gotoChannel(int newChannel){
 
   //These steps come from AN230 page 20 rev 0.5
   si4703_readRegisters();
-  si4703_registers[CHANNEL] &= 0xFE00; //Clear out the channel bits
-  si4703_registers[CHANNEL] |= newChannel; //Mask in the new channel
-  si4703_registers[CHANNEL] |= (1<<TUNE); //Set the TUNE bit to start
+  si4703_registers[REG_CHANNEL] &= 0xFE00; //Clear out the channel bits
+  si4703_registers[REG_CHANNEL] |= newChannel; //Mask in the new channel
+  si4703_registers[REG_CHANNEL] |= (1<<TUNE); //Set the TUNE bit to start
   si4703_updateRegisters();
 
   //delay(60); //Wait 60ms - you can use or skip this delay
@@ -447,27 +447,27 @@ void gotoChannel(int newChannel){
   //Poll to see if STC is set
   while(1) {
     si4703_readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) != 0) break; //Tuning complete!
+    if( (si4703_registers[REG_STATUSRSSI] & (1<<STC)) != 0) break; //Tuning complete!
     Serial.println("Tuning");
   }
 
   si4703_readRegisters();
-  si4703_registers[CHANNEL] &= ~(1<<TUNE); //Clear the tune after a tune has completed
+  si4703_registers[REG_CHANNEL] &= ~(1<<TUNE); //Clear the tune after a tune has completed
   si4703_updateRegisters();
 
   //Wait for the si4703 to clear the STC as well
   while(1) {
     si4703_readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
+    if( (si4703_registers[REG_STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
     Serial.println("Waiting...");
   }
 }
 
-//Reads the current channel from READCHAN
+//Reads the current channel from REG_READCHAN
 //Returns a number like 973 for 97.3MHz
 int readChannel(void) {
   si4703_readRegisters();
-  int channel = si4703_registers[READCHAN] & 0x03FF; //Mask out everything but the lower 10 bits
+  int channel = si4703_registers[REG_READCHAN] & 0x03FF; //Mask out everything but the lower 10 bits
 
 #ifdef IN_EUROPE
   //Freq(MHz) = 0.100(in Europe) * Channel + 87.5MHz
@@ -490,34 +490,34 @@ byte seek(byte seekDirection){
   si4703_readRegisters();
 
   //Set seek mode wrap bit
-  //si4703_registers[POWERCFG] |= (1<<SKMODE); //Allow wrap
-  si4703_registers[POWERCFG] &= ~(1<<SKMODE); //Disallow wrap - if you disallow wrap, you may want to tune to 87.5 first
+  //si4703_registers[REG_POWERCFG] |= (1<<SKMODE); //Allow wrap
+  si4703_registers[REG_POWERCFG] &= ~(1<<SKMODE); //Disallow wrap - if you disallow wrap, you may want to tune to 87.5 first
 
-  if(seekDirection == SEEK_DOWN) si4703_registers[POWERCFG] &= ~(1<<SEEKUP); //Seek down is the default upon reset
-  else si4703_registers[POWERCFG] |= 1<<SEEKUP; //Set the bit to seek up
+  if(seekDirection == SEEK_DOWN) si4703_registers[REG_POWERCFG] &= ~(1<<SEEKUP); //Seek down is the default upon reset
+  else si4703_registers[REG_POWERCFG] |= 1<<SEEKUP; //Set the bit to seek up
 
-  si4703_registers[POWERCFG] |= (1<<SEEK); //Start seek
+  si4703_registers[REG_POWERCFG] |= (1<<SEEK); //Start seek
 
   si4703_updateRegisters(); //Seeking will now start
 
   //Poll to see if STC is set
   while(1) {
     si4703_readRegisters();
-    if((si4703_registers[STATUSRSSI] & (1<<STC)) != 0) break; //Tuning complete!
+    if((si4703_registers[REG_STATUSRSSI] & (1<<STC)) != 0) break; //Tuning complete!
 
     Serial.print("Trying station:");
     Serial.println(readChannel());
   }
 
   si4703_readRegisters();
-  int valueSFBL = si4703_registers[STATUSRSSI] & (1<<SFBL); //Store the value of SFBL
-  si4703_registers[POWERCFG] &= ~(1<<SEEK); //Clear the seek bit after seek has completed
+  int valueSFBL = si4703_registers[REG_STATUSRSSI] & (1<<SFBL); //Store the value of SFBL
+  si4703_registers[REG_POWERCFG] &= ~(1<<SEEK); //Clear the seek bit after seek has completed
   si4703_updateRegisters();
 
   //Wait for the si4703 to clear the STC as well
   while(1) {
     si4703_readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
+    if( (si4703_registers[REG_STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
     Serial.println("Waiting...");
   }
 
@@ -554,19 +554,19 @@ void si4703_init(void) {
   delay(500); //Wait for clock to settle - from AN230 page 9
 
   si4703_readRegisters(); //Read the current register set
-  si4703_registers[POWERCFG] = 0x4001; //Enable the IC
-  //  si4703_registers[POWERCFG] |= (1<<SMUTE) | (1<<DMUTE); //Disable Mute, disable softmute
-  si4703_registers[SYSCONFIG1] |= (1<<RDS); //Enable RDS
+  si4703_registers[REG_POWERCFG] = 0x4001; //Enable the IC
+  //  si4703_registers[REG_POWERCFG] |= (1<<SMUTE) | (1<<DMUTE); //Disable Mute, disable softmute
+  si4703_registers[REG_SYSCONFIG1] |= (1<<RDS); //Enable RDS
 
 #ifdef IN_EUROPE
-    si4703_registers[SYSCONFIG1] |= (1<<DE); //50kHz Europe setup
-  si4703_registers[SYSCONFIG2] |= (1<<SPACE0); //100kHz channel spacing for Europe
+    si4703_registers[REG_SYSCONFIG1] |= (1<<DE); //50kHz Europe setup
+  si4703_registers[REG_SYSCONFIG2] |= (1<<SPACE0); //100kHz channel spacing for Europe
 #else
-  si4703_registers[SYSCONFIG2] &= ~(1<<SPACE1 | 1<<SPACE0) ; //Force 200kHz channel spacing for USA
+  si4703_registers[REG_SYSCONFIG2] &= ~(1<<SPACE1 | 1<<SPACE0) ; //Force 200kHz channel spacing for USA
 #endif
 
-  si4703_registers[SYSCONFIG2] &= 0xFFF0; //Clear volume bits
-  si4703_registers[SYSCONFIG2] |= 0x0001; //Set volume to lowest
+  si4703_registers[REG_SYSCONFIG2] &= 0xFFF0; //Clear volume bits
+  si4703_registers[REG_SYSCONFIG2] |= 0x0001; //Set volume to lowest
   si4703_updateRegisters(); //Update
 
   delay(110); //Max powerup time, from datasheet page 13
@@ -633,46 +633,46 @@ boolean isValidAsciiBasicCharacterSet(byte rdsData)
 
 boolean isValidRdsData() {
 
-  byte blockErrors = (byte)((si4703_registers[STATUSRSSI] & 0x0600) >> 9); //Mask in BLERA;
+  byte blockErrors = (byte)((si4703_registers[REG_STATUSRSSI] & 0x0600) >> 9); //Mask in BLERA;
 
-  byte Ch = (si4703_registers[RDSC] & 0xFF00) >> 8;
-  byte Cl = (si4703_registers[RDSC] & 0x00FF);
+  byte Ch = (si4703_registers[REG_RDSC] & 0xFF00) >> 8;
+  byte Cl = (si4703_registers[REG_RDSC] & 0x00FF);
 
-  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
-  byte Dl = (si4703_registers[RDSD] & 0x00FF);
+  byte Dh = (si4703_registers[REG_RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[REG_RDSD] & 0x00FF);
 
   return blockErrors == 0 && isValidAsciiBasicCharacterSet(Dh) && isValidAsciiBasicCharacterSet(Dl) && isValidAsciiBasicCharacterSet(Ch) && isValidAsciiBasicCharacterSet(Cl);
 }
 
 boolean isValidStationNameData() {
 
-  byte blockErrors = (byte)((si4703_registers[STATUSRSSI] & 0x0600) >> 9); //Mask in BLERA;
+  byte blockErrors = (byte)((si4703_registers[REG_STATUSRSSI] & 0x0600) >> 9); //Mask in BLERA;
 
-  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
-  byte Dl = (si4703_registers[RDSD] & 0x00FF);
+  byte Dh = (si4703_registers[REG_RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[REG_RDSD] & 0x00FF);
 
   return blockErrors == 0 && isValidAsciiBasicCharacterSet(Dh) && isValidAsciiBasicCharacterSet(Dl);
 }
 
 boolean isRadioTextData(void) {
-  return (si4703_registers[RDSB] >> 11) == 4 || (si4703_registers[RDSB] >> 11) == 5;
+  return (si4703_registers[REG_RDSB] >> 11) == 4 || (si4703_registers[REG_RDSB] >> 11) == 5;
 }
 
 boolean isStationNameData(void) {
-  return (si4703_registers[RDSB] >> 11) == 0 || (si4703_registers[RDSB] >> 11) == 1;
+  return (si4703_registers[REG_RDSB] >> 11) == 0 || (si4703_registers[REG_RDSB] >> 11) == 1;
 }
 
 void setRadioTextData(char* pointerToRadioTextData)
 {
   // retrieve where this data sits in the RDS message
-  byte positionOfData = (si4703_registers[RDSB] & 0x00FF & 0xf);
+  byte positionOfData = (si4703_registers[REG_RDSB] & 0x00FF & 0xf);
   byte characterPosition;
 
-  byte Ch = (si4703_registers[RDSC] & 0xFF00) >> 8;
-  byte Cl = (si4703_registers[RDSC] & 0x00FF);
+  byte Ch = (si4703_registers[REG_RDSC] & 0xFF00) >> 8;
+  byte Cl = (si4703_registers[REG_RDSC] & 0x00FF);
 
-  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
-  byte Dl = (si4703_registers[RDSD] & 0x00FF);
+  byte Dh = (si4703_registers[REG_RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[REG_RDSD] & 0x00FF);
 
   characterPosition = positionOfData * 4;
   pointerToRadioTextData[characterPosition] = (char)Ch;
@@ -690,11 +690,11 @@ void setRadioTextData(char* pointerToRadioTextData)
 void setStationNameData(char* pointerToStationNameData)
 {
   // retrieve where this data sits in the RDS message
-  byte positionOfData = (si4703_registers[RDSB] & 0x00FF & 0x3);
+  byte positionOfData = (si4703_registers[REG_RDSB] & 0x00FF & 0x3);
   byte characterPosition;
 
-  byte Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
-  byte Dl = (si4703_registers[RDSD] & 0x00FF);
+  byte Dh = (si4703_registers[REG_RDSD] & 0xFF00) >> 8;
+  byte Dl = (si4703_registers[REG_RDSD] & 0x00FF);
 
   characterPosition = positionOfData * 2;
   pointerToStationNameData[characterPosition] = (char)Dh;

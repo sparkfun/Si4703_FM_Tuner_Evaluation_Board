@@ -26,9 +26,9 @@ void Si4703_Breakout::setChannel(int channel)
 
   //These steps come from AN230 page 20 rev 0.5
   readRegisters();
-  si4703_registers[CHANNEL] &= 0xFE00; //Clear out the channel bits
-  si4703_registers[CHANNEL] |= newChannel; //Mask in the new channel
-  si4703_registers[CHANNEL] |= (1<<TUNE); //Set the TUNE bit to start
+  si4703_registers[REG_CHANNEL] &= 0xFE00; //Clear out the channel bits
+  si4703_registers[REG_CHANNEL] |= newChannel; //Mask in the new channel
+  si4703_registers[REG_CHANNEL] |= (1<<TUNE); //Set the TUNE bit to start
   updateRegisters();
 
   //delay(60); //Wait 60ms - you can use or skip this delay
@@ -36,13 +36,13 @@ void Si4703_Breakout::setChannel(int channel)
   while(_stcIntPin == 1) {} //Wait for STC (Seek/Tune Complete) interrupt
 
   readRegisters();
-  si4703_registers[CHANNEL] &= ~(1<<TUNE); //Clear the tune after a tune has completed
+  si4703_registers[REG_CHANNEL] &= ~(1<<TUNE); //Clear the tune after a tune has completed
   updateRegisters();
 
   //Wait for the si4703 to clear the STC as well
   while(1) {
     readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
+    if( (si4703_registers[REG_STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
   }
 }
 
@@ -61,8 +61,8 @@ void Si4703_Breakout::setVolume(int volume)
   readRegisters(); //Read the current register set
   if(volume < 0) volume = 0;
   if (volume > 15) volume = 15;
-  si4703_registers[SYSCONFIG2] &= 0xFFF0; //Clear volume bits
-  si4703_registers[SYSCONFIG2] |= volume; //Set new volume
+  si4703_registers[REG_SYSCONFIG2] &= 0xFFF0; //Clear volume bits
+  si4703_registers[REG_SYSCONFIG2] |= volume; //Set new volume
   updateRegisters(); //Update
 }
 
@@ -73,21 +73,21 @@ void Si4703_Breakout::readRDS(char* buffer, long timeout)
   int completedCount = 0;
   while(completedCount < 4 && millis() < endTime) {
 	readRegisters();
-	if(si4703_registers[STATUSRSSI] & (1<<RDSR)){
+	if(si4703_registers[REG_STATUSRSSI] & (1<<RDSR)){
 		// ls 2 bits of B determine the 4 letter pairs
 		// once we have a full set return
 		// if you get nothing after 20 readings return with empty string
-	  uint16_t b = si4703_registers[RDSB];
+	  uint16_t b = si4703_registers[REG_RDSB];
 	  int index = b & 0x03;
 	  if (! completed[index] && b < 500)
 	  {
 		completed[index] = true;
 		completedCount ++;
-	  	char Dh = (si4703_registers[RDSD] & 0xFF00) >> 8;
-      	char Dl = (si4703_registers[RDSD] & 0x00FF);
+	  	char Dh = (si4703_registers[REG_RDSD] & 0xFF00) >> 8;
+      	char Dl = (si4703_registers[REG_RDSD] & 0x00FF);
 		buffer[index * 2] = Dh;
 		buffer[index * 2 +1] = Dl;
-		// Serial.print(si4703_registers[RDSD]); Serial.print(" ");
+		// Serial.print(si4703_registers[REG_RDSD]); Serial.print(" ");
 		// Serial.print(index);Serial.print(" ");
 		// Serial.write(Dh);
 		// Serial.write(Dl);
@@ -136,15 +136,15 @@ void Si4703_Breakout::si4703_init()
   delay(500); //Wait for clock to settle - from AN230 page 9
 
   readRegisters(); //Read the current register set
-  si4703_registers[POWERCFG] = 0x4001; //Enable the IC
-  //  si4703_registers[POWERCFG] |= (1<<SMUTE) | (1<<DMUTE); //Disable Mute, disable softmute
-  si4703_registers[SYSCONFIG1] |= (1<<RDS); //Enable RDS
+  si4703_registers[REG_POWERCFG] = 0x4001; //Enable the IC
+  //  si4703_registers[REG_POWERCFG] |= (1<<SMUTE) | (1<<DMUTE); //Disable Mute, disable softmute
+  si4703_registers[REG_SYSCONFIG1] |= (1<<RDS); //Enable RDS
 
-  si4703_registers[SYSCONFIG1] |= (1<<DE); //50kHz Europe setup
-  si4703_registers[SYSCONFIG2] |= (1<<SPACE0); //100kHz channel spacing for Europe
+  si4703_registers[REG_SYSCONFIG1] |= (1<<DE); //50kHz Europe setup
+  si4703_registers[REG_SYSCONFIG2] |= (1<<SPACE0); //100kHz channel spacing for Europe
 
-  si4703_registers[SYSCONFIG2] &= 0xFFF0; //Clear volume bits
-  si4703_registers[SYSCONFIG2] |= 0x0001; //Set volume to lowest
+  si4703_registers[REG_SYSCONFIG2] &= 0xFFF0; //Clear volume bits
+  si4703_registers[REG_SYSCONFIG2] |= 0x0001; //Set volume to lowest
   updateRegisters(); //Update
 
   delay(110); //Max powerup time, from datasheet page 13
@@ -197,25 +197,25 @@ byte Si4703_Breakout::updateRegisters() {
 int Si4703_Breakout::seek(byte seekDirection){
   readRegisters();
   //Set seek mode wrap bit
-  si4703_registers[POWERCFG] |= (1<<SKMODE); //Allow wrap
-  //si4703_registers[POWERCFG] &= ~(1<<SKMODE); //Disallow wrap - if you disallow wrap, you may want to tune to 87.5 first
-  if(seekDirection == SEEK_DOWN) si4703_registers[POWERCFG] &= ~(1<<SEEKUP); //Seek down is the default upon reset
-  else si4703_registers[POWERCFG] |= 1<<SEEKUP; //Set the bit to seek up
+  si4703_registers[REG_POWERCFG] |= (1<<SKMODE); //Allow wrap
+  //si4703_registers[REG_POWERCFG] &= ~(1<<SKMODE); //Disallow wrap - if you disallow wrap, you may want to tune to 87.5 first
+  if(seekDirection == SEEK_DOWN) si4703_registers[REG_POWERCFG] &= ~(1<<SEEKUP); //Seek down is the default upon reset
+  else si4703_registers[REG_POWERCFG] |= 1<<SEEKUP; //Set the bit to seek up
 
-  si4703_registers[POWERCFG] |= (1<<SEEK); //Start seek
+  si4703_registers[REG_POWERCFG] |= (1<<SEEK); //Start seek
   updateRegisters(); //Seeking will now start
 
   while(_stcIntPin == 1) {} //Wait for STC(Seek/Tune Complete) interrupt
 
   readRegisters();
-  int valueSFBL = si4703_registers[STATUSRSSI] & (1<<SFBL); //Store the value of SFBL
-  si4703_registers[POWERCFG] &= ~(1<<SEEK); //Clear the seek bit after seek has completed
+  int valueSFBL = si4703_registers[REG_STATUSRSSI] & (1<<SFBL); //Store the value of SFBL
+  si4703_registers[REG_POWERCFG] &= ~(1<<SEEK); //Clear the seek bit after seek has completed
   updateRegisters();
 
   //Wait for the si4703 to clear the STC as well
   while(1) {
     readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
+    if( (si4703_registers[REG_STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
   }
 
   if(valueSFBL) { //The bit was set indicating we hit a band limit or failed to find a station
@@ -224,11 +224,11 @@ int Si4703_Breakout::seek(byte seekDirection){
 return getChannel();
 }
 
-//Reads the current channel from READCHAN
+//Reads the current channel from REG_READCHAN
 //Returns a number like 973 for 97.3MHz
 int Si4703_Breakout::getChannel() {
   readRegisters();
-  int channel = si4703_registers[READCHAN] & 0x03FF; //Mask out everything but the lower 10 bits
+  int channel = si4703_registers[REG_READCHAN] & 0x03FF; //Mask out everything but the lower 10 bits
   //Freq(MHz) = 0.100(in Europe) * Channel + 87.5MHz
   //X = 0.1 * Chan + 87.5
   channel += 875; //98 + 875 = 973
