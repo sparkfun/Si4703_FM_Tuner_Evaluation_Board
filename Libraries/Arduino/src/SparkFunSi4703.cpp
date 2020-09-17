@@ -2,6 +2,44 @@
 #include "SparkFunSi4703.h"
 #include "Wire.h"
 
+#if !defined(NOT_AN_INTERRUPT)
+#define NOT_AN_INTERRUPT -1
+#endif
+
+// REG_SYSCONFIG1 value to enable interrupts on the Si4703 GPIO2 pin.
+#define STCIEN 0x4000  // (1 << 14).
+
+// REG_SYSCONFIG1 GPIO2 values. (See AN230 sect. 3.2.5).
+#define RDS_HIGH_IMPEDENCE 0b0000 // High impedance (default)
+#define RDS_STC_RDS_INT    0b0100 // STC/RDS interrupt
+#define RDS_LOW_OUTPUT     0b1000 // Low output (GND level)
+#define RDS_HIGH_OUTPUT    0b1100 // High output (VIO level)
+
+// Register 0x0A - REG_STATUSRSSI
+#define RDSR 0x8000  // (1 << 15)
+#define STC  0x4000  // (1 << 14)
+
+namespace {
+
+// The number of channels in the FM band. Note: this is for US.
+const int kNumChannels = 100;
+
+// The maximum seek/tune time in msec/channel. This is specified in the
+// datasheet and may be device specific. 60 msec is for the Si4703.
+const int kMaxStcTimeMs = 60;
+
+// True when seeking/tuning, set to false (by interrupt handler) when seek/tune
+// has completed. Unused with the STC interrupt pin is unused.
+volatile bool g_stcInProgress = false;
+
+// Interrupt service handling routine, triggered when the Si4703's GPIO2 pin
+// is falling low. This is done when the seek/tune operation is complete.
+void ICACHE_RAM_ATTR stcIntHandler() {
+  g_stcInProgress = false;
+}
+
+} // namespace
+
 Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, int sclkPin, int stcIntPin)
 {
   _resetPin = resetPin;
@@ -13,6 +51,34 @@ Si4703_Breakout::Si4703_Breakout(int resetPin, int sdioPin, int sclkPin, int stc
 void Si4703_Breakout::powerOn()
 {
     si4703_init();
+}
+
+//
+// Wait for seek/tune to complete as described in AN230 sect. 3.6.3.
+//
+void Si4703_Breakout::waitForSTC(int maxWaitTimeMs) {
+  const int kDelayTimeMs = 5;
+  int timeWaitedMs = 0;
+
+  while (g_stcInProgress && timeWaitedMs < maxWaitTimeMs) {
+    if (_stcIntPin >= 0) { // If using the STC interrupt.
+      // Do nothing, the interrupt routine will clear g_stcInProgress.
+    } else {
+      // Poll STATUSRSSI to see if seek/tune is complete.
+      readRegisters();
+      if (si4703_registers[REG_STATUSRSSI] & STC)
+        g_stcInProgress = false;
+    }
+    if (g_stcInProgress) {
+      delay(kDelayTimeMs); // Short delay to prevent chip from spinning at 100%.
+      timeWaitedMs += kDelayTimeMs;
+    }
+  }
+
+  if (timeWaitedMs >= maxWaitTimeMs) {
+    //Serial.println("Timeout waiting for STC");
+    g_stcInProgress = false;
+  }
 }
 
 void Si4703_Breakout::setChannel(int channel)
@@ -29,21 +95,14 @@ void Si4703_Breakout::setChannel(int channel)
   si4703_registers[CHANNEL] &= 0xFE00; //Clear out the channel bits
   si4703_registers[CHANNEL] |= newChannel; //Mask in the new channel
   si4703_registers[CHANNEL] |= (1<<TUNE); //Set the TUNE bit to start
+  g_stcInProgress = true;
   updateRegisters();
 
-  //delay(60); //Wait 60ms - you can use or skip this delay
-
-  while(_stcIntPin == 1) {} //Wait for STC (Seek/Tune Complete) interrupt
+  waitForSTC(kMaxStcTimeMs);
 
   readRegisters();
   si4703_registers[CHANNEL] &= ~(1<<TUNE); //Clear the tune after a tune has completed
   updateRegisters();
-
-  //Wait for the si4703 to clear the STC as well
-  while(1) {
-    readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
-  }
 }
 
 int Si4703_Breakout::seekUp()
@@ -117,10 +176,12 @@ void Si4703_Breakout::si4703_init()
 {
   pinMode(_resetPin, OUTPUT);
   pinMode(_sdioPin, OUTPUT); //SDIO is connected to A4 for I2C
-  pinMode(_stcIntPin, OUTPUT);
+  if (_stcIntPin >= 0)
+    pinMode(_stcIntPin, OUTPUT);
   digitalWrite(_sdioPin, LOW); //A low SDIO indicates a 2-wire interface
   digitalWrite(_resetPin, LOW); //Put Si4703 into reset
-  digitalWrite(_stcIntPin, HIGH); //STC (Seek/Tune Complete) goes low on interrupt
+  if (_stcIntPin >= 0)
+    digitalWrite(_stcIntPin, HIGH); //STC (Seek/Tune Complete) goes low on interrupt
   delay(1); //Some delays while we allow pins to settle
   digitalWrite(_resetPin, HIGH); //Bring Si4703 out of reset with SDIO set to low and SEN pulled high with on-board resistor
   delay(1); //Allow Si4703 to come out of reset
@@ -130,7 +191,8 @@ void Si4703_Breakout::si4703_init()
   readRegisters(); //Read the current register set
   //si4703_registers[0x07] = 0xBC04; //Enable the oscillator, from AN230 page 9, rev 0.5 (DOES NOT WORK, wtf Silicon Labs datasheet?)
   si4703_registers[0x07] = 0x8100; //Enable the oscillator, from AN230 page 9, rev 0.61 (works)
-  si4703_registers[0x04] |= 0x2000; //Enable GPIO2 as SCT interrupt
+  if (_stcIntPin >= 0)
+    si4703_registers[REG_SYSCONFIG1] |= (STCIEN | RDS_STC_RDS_INT);
   updateRegisters(); //Update
 
   delay(500); //Wait for clock to settle - from AN230 page 9
@@ -146,6 +208,17 @@ void Si4703_Breakout::si4703_init()
   si4703_registers[SYSCONFIG2] &= 0xFFF0; //Clear volume bits
   si4703_registers[SYSCONFIG2] |= 0x0001; //Set volume to lowest
   updateRegisters(); //Update
+
+  if (_stcIntPin >= 0) {
+    const int interruptNumber = digitalPinToInterrupt(_stcIntPin);
+    if (interruptNumber == NOT_AN_INTERRUPT) {
+      Serial.println("Cannot use STC int pin: not an interrupt.");
+      _stcIntPin = -1; // Fallback to using a delay.
+    } else {
+      pinMode(_stcIntPin, INPUT_PULLUP);
+      attachInterrupt(interruptNumber, &stcIntHandler, FALLING);
+    }
+  }
 
   delay(110); //Max powerup time, from datasheet page 13
 }
@@ -203,20 +276,15 @@ int Si4703_Breakout::seek(byte seekDirection){
   else si4703_registers[POWERCFG] |= 1<<SEEKUP; //Set the bit to seek up
 
   si4703_registers[POWERCFG] |= (1<<SEEK); //Start seek
+  g_stcInProgress = true;
   updateRegisters(); //Seeking will now start
 
-  while(_stcIntPin == 1) {} //Wait for STC(Seek/Tune Complete) interrupt
+  waitForSTC(kMaxStcTimeMs * kNumChannels);
 
   readRegisters();
   int valueSFBL = si4703_registers[STATUSRSSI] & (1<<SFBL); //Store the value of SFBL
   si4703_registers[POWERCFG] &= ~(1<<SEEK); //Clear the seek bit after seek has completed
   updateRegisters();
-
-  //Wait for the si4703 to clear the STC as well
-  while(1) {
-    readRegisters();
-    if( (si4703_registers[STATUSRSSI] & (1<<STC)) == 0) break; //Tuning complete!
-  }
 
   if(valueSFBL) { //The bit was set indicating we hit a band limit or failed to find a station
     return(0);

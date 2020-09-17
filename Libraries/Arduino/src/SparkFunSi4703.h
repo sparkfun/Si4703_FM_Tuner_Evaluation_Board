@@ -49,6 +49,15 @@ cables. Too short of a cable may degrade reception.
 class Si4703_Breakout
 {
   public:
+    /**
+     * Construct an object to communicate with the Si4703 tuner chip.
+     *
+     * @param resetPin  The device GPIO pin connected to the Si4703 RST pin.
+     * @param sdioPin   The device GPIO pin connected to the Si4703 SDA pin.
+     * @param sclkPin   The device GPIO pin connected to the Si4703 SCL pin.
+     * @param stcIntPin The device GPIO pin connected to the Si4703 GPIO2 pin.
+     *                  Set this to -1 to disable this pin.
+     */
     Si4703_Breakout(int resetPin, int sdioPin, int sclkPin, int sctIntPin);
     void powerOn();					// call in setup
 	void setChannel(int channel);  	// 3 digit channel number
@@ -60,6 +69,10 @@ class Si4703_Breakout
 									// result will be null terminated
 									// timeout in milliseconds
   private:
+
+  // Wait for the scanning/tuning operation to complete.
+  void waitForSTC(int maxWaitTimeMs);
+
     int  _resetPin;
 	int  _sdioPin;
 	int  _sclkPin;
